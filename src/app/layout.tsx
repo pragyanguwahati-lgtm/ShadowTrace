@@ -30,6 +30,13 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "ShadowTrace · Dynamic OSINT Investigations",
   description: "Cinematic, open-source intelligence simulator. Correlate telemetry, inspect cryptographic leaks, and reconstruct classified security breaches.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/icon.svg",
+    apple: "/apple-icon.svg",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
