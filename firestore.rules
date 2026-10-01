@@ -1,26 +1,63 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    
+    // Core Helper Functions for Enterprise Row Level Security (RLS)
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
     }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isExistingOwner() {
+      return isAuthenticated() && resource != null && resource.data.userId == request.auth.uid;
+    }
+
+    function isIncomingOwner() {
+      return isAuthenticated() && request.resource != null && request.resource.data.userId == request.auth.uid;
+    }
+
+    // 1. User Profiles & Clearance State: Strictly Row-Isolated
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.keys().hasAll(['username', 'createdAt']);
+      allow update: if isOwner(userId) && request.resource.data.userId == userId;
+      allow delete: if false; // Disallow user deletion via client
+    }
+
+    // 2. Blueprint Case Definitions: Public Read-Only, Client Write Forbidden
     match /cases/{caseId} {
       allow read: if true;
       allow write: if false;
     }
+
+    // 3. Evidentiary Clues: Public Read-Only, Client Write Forbidden
     match /clues/{clueId} {
-      allow read: if true; 
+      allow read: if true;
       allow write: if false;
     }
+
+    // 4. Operative Investigation Sessions: Strict Row Level Security
     match /sessions/{sessionId} {
-      // Allow user to read/write their own sessions
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      // Allow creation if the user matches the payload
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if isExistingOwner();
+      allow create: if isIncomingOwner();
+      allow update: if isExistingOwner() && isIncomingOwner();
+      allow delete: if isExistingOwner();
     }
+
+    // 5. Intelligence Debrief Reports: Strict Row Level Security
     match /reports/{reportId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if isExistingOwner();
+      allow create: if isIncomingOwner();
+      allow update: if isExistingOwner() && isIncomingOwner();
+      allow delete: if isExistingOwner();
+    }
+
+    // Default Deny: Fallback safety barrier against unauthorized collections
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

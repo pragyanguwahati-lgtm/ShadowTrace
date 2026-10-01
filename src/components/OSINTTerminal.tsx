@@ -14,18 +14,20 @@ interface OSINTTerminalProps {
   onTraceComplete?: (intelKey: string) => void;
   terminalIntel?: TerminalIntelligence;
   externalQuery?: string;
+  completedTasks?: string[];
 }
 
 export default function OSINTTerminal({ 
   onTraceComplete, 
   terminalIntel, 
-  externalQuery 
+  externalQuery,
+  completedTasks = []
 }: OSINTTerminalProps) {
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<TerminalLine[]>([
     { type: "system", text: "ShadowTrace Tactical OSINT v3.4 [Relay: SECURE_TUNNEL_09]" },
     { type: "system", text: "Type 'help' for command syntax, or enter an IP / domain to analyze." },
-    { type: "intel", text: "OPERATIVE DIRECTIVE: Use raw server logs to identify and trace target IPs." }
+    { type: "intel", text: "OPERATIVE DIRECTIVE: Complete all 4 terminal intelligence objectives to resolve the operation." }
   ]);
   const [isProcessing, setIsProcessing] = useState(false);
   const terminalBottomRef = useRef<HTMLDivElement>(null);
@@ -127,7 +129,7 @@ export default function OSINTTerminal({
         return;
       }
 
-      // Check for target IP trace (supports dynamic generated case targetIp and fallback 10.5.22.1)
+      // 1. Check for target IP trace (supports dynamic generated case targetIp and fallback 10.5.22.1)
       if (lower.includes(targetIp.toLowerCase()) || lower.includes("10.5.22.1")) {
         const customLines = terminalIntel?.customTraces?.[targetIp] || [
           `[*] Initiating deep packet trace to ${targetIp}...`,
@@ -151,12 +153,12 @@ export default function OSINTTerminal({
             text: line
           }))
         ]);
-        onTraceComplete?.(targetIp);
+        onTraceComplete?.("c2_trace");
         setIsProcessing(false);
         return;
       }
 
-      // Check for internal IP scan (supports dynamic generated case internalIp and fallback 192.168.1.104)
+      // 2. Check for internal IP scan (supports dynamic generated case internalIp and fallback 192.168.1.104)
       if (lower.includes(internalIp.toLowerCase()) || lower.includes("192.168.1.104")) {
         setHistory(prev => [
           ...prev,
@@ -166,12 +168,12 @@ export default function OSINTTerminal({
           { type: "warning", text: `  Audit Event: 14:02:11 POST /api/v1/auth (Unauthorized administrative token bypass)` },
           { type: "success", text: `  DEDUCTION: Internal terminal compromised. Payloads routed to external C2 proxy ${targetIp}.` }
         ]);
-        onTraceComplete?.(internalIp);
+        onTraceComplete?.("internal_scan");
         setIsProcessing(false);
         return;
       }
 
-      // Check for domain whois query
+      // 3. Check for domain whois query
       if (lower.includes(domain.toLowerCase()) || lower.includes("silent-hand.net")) {
         setHistory(prev => [
           ...prev,
@@ -182,12 +184,12 @@ export default function OSINTTerminal({
           { type: "warning", text: `  Attribution: ${syndicate}` },
           { type: "success", text: `  STATUS: Verified hostile command-and-control domain for ${syndicate}.` }
         ]);
-        onTraceComplete?.(domain);
+        onTraceComplete?.("whois_lookup");
         setIsProcessing(false);
         return;
       }
 
-      // Check for syndicate dossier
+      // 4. Check for syndicate dossier
       if (lower.includes(syndicate.toLowerCase()) || lower.includes("silent hand") || lower.includes("syndicate")) {
         setHistory(prev => [
           ...prev,
@@ -199,7 +201,7 @@ export default function OSINTTerminal({
           { type: "system", text: `  Physical Rendezvous: ${locationName} [Coords: ${coords}]` },
           { type: "success", text: `  STATUS: Ready to finalize intelligence dossier for Case Report.` }
         ]);
-        onTraceComplete?.(syndicate);
+        onTraceComplete?.("syndicate_intel");
         setIsProcessing(false);
         return;
       }
@@ -221,7 +223,7 @@ export default function OSINTTerminal({
           { type: "system", text: `  Scheduled Handover: 22:00 UTC (Today)` },
           { type: "success", text: `  Target Operative '${suspectHandle}' confirmed en route with encrypted hardware payload.` }
         ]);
-        onTraceComplete?.("rendezvous");
+        onTraceComplete?.("syndicate_intel");
         setIsProcessing(false);
         return;
       }
@@ -272,6 +274,50 @@ export default function OSINTTerminal({
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
+        </div>
+      </div>
+
+      {/* OSINT Directives HUD Bar */}
+      <div className="px-4 py-2 bg-black/80 border-b border-green-900/40 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-green-500 font-bold uppercase tracking-wider">OSINT Directives:</span>
+          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+            (completedTasks || []).length >= 4 
+              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" 
+              : "bg-amber-500/15 text-amber border border-amber-500/30"
+          }`}>
+            {(completedTasks || []).length}/4 RESOLVED
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+          <span className={`px-2 py-0.5 rounded border transition-colors ${
+            completedTasks?.includes("c2_trace")
+              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 font-bold"
+              : "bg-black/40 text-green-500/60 border-green-900/40"
+          }`}>
+            {completedTasks?.includes("c2_trace") ? "✓" : "○"} 1. C2 Trace
+          </span>
+          <span className={`px-2 py-0.5 rounded border transition-colors ${
+            completedTasks?.includes("internal_scan")
+              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 font-bold"
+              : "bg-black/40 text-green-500/60 border-green-900/40"
+          }`}>
+            {completedTasks?.includes("internal_scan") ? "✓" : "○"} 2. Host Scan
+          </span>
+          <span className={`px-2 py-0.5 rounded border transition-colors ${
+            completedTasks?.includes("whois_lookup")
+              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 font-bold"
+              : "bg-black/40 text-green-500/60 border-green-900/40"
+          }`}>
+            {completedTasks?.includes("whois_lookup") ? "✓" : "○"} 3. WHOIS
+          </span>
+          <span className={`px-2 py-0.5 rounded border transition-colors ${
+            completedTasks?.includes("syndicate_intel")
+              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 font-bold"
+              : "bg-black/40 text-green-500/60 border-green-900/40"
+          }`}>
+            {completedTasks?.includes("syndicate_intel") ? "✓" : "○"} 4. Threat Intel
+          </span>
         </div>
       </div>
 

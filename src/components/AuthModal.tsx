@@ -21,6 +21,8 @@ import {
   enableGuestSession,
   OperativeAccount 
 } from "@/lib/auth/user-store";
+import PasswordInput from "./ui/PasswordInput";
+import FormStatusAlert from "./ui/FormStatusAlert";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -223,17 +225,20 @@ export default function AuthModal({
                 </div>
 
                 {errorMsg && (
-                  <div className="p-3 rounded-lg border border-red-500/30 bg-red-950/30 text-red-400 text-xs flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>{errorMsg}</span>
-                  </div>
+                  <FormStatusAlert
+                    type="error"
+                    title="AUTHENTICATION REJECTED"
+                    message={errorMsg}
+                    onDismiss={() => setErrorMsg(null)}
+                  />
                 )}
 
                 {successMsg && (
-                  <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-950/30 text-emerald-400 text-xs flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span>{successMsg}</span>
-                  </div>
+                  <FormStatusAlert
+                    type="success"
+                    title="AUTHORIZATION GRANTED"
+                    message={successMsg}
+                  />
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-3.5">
@@ -258,22 +263,17 @@ export default function AuthModal({
                     <label className="text-[11px] uppercase tracking-wider text-muted block mb-1">
                       Cipher Password:
                     </label>
-                    <div className="relative">
-                      <KeyRound className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="password"
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••••••"
-                        className="w-full bg-[#06080a] border border-cyan-400/30 rounded-lg py-2.5 pl-9 pr-3 text-xs text-white focus:outline-none focus:border-cyan-400 font-mono transition-colors"
-                      />
-                    </div>
-                    {mode === "register" && (
-                      <span className="text-[10px] text-muted/60 mt-1 block">
-                        Minimum 6 characters. Passwords are salted and hashed via SHA-256 before storage.
-                      </span>
-                    )}
+                    <PasswordInput
+                      required
+                      value={password}
+                      onChange={setPassword}
+                      placeholder="••••••••••••"
+                      helperText={
+                        mode === "register"
+                          ? "Minimum 6 characters. Passwords are salted and hashed via SHA-256 before storage."
+                          : undefined
+                      }
+                    />
                   </div>
 
                   <button

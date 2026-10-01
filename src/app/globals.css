@@ -97,3 +97,89 @@ html.lenis, html.lenis body {
   transform-origin: center;
 }
 
+/* Feature 11: Tactical Sticky Header */
+.sticky-tactical-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Feature 7: Micro-interaction tactical hover states */
+.hover-tactical-glow {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-tactical-glow:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 18px rgba(34, 224, 255, 0.25);
+  border-color: rgba(34, 224, 255, 0.6);
+}
+
+.hover-tactical-lift {
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.hover-tactical-lift:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Feature 10: Clean Tactical Print Stylesheet for Dossiers & Briefings */
+@media print {
+  /* Hide non-printable elements */
+  nav,
+  footer,
+  #tactical-canvas,
+  .print\:hidden,
+  button:not(.print-preserve),
+  input,
+  [role="dialog"],
+  .fixed {
+    display: none !important;
+  }
+
+  /* Reset document flow and styling for black/white paper */
+  html, body {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #111111 !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Ensure text is dark and legible on white paper */
+  p, h1, h2, h3, h4, span, div {
+    color: #111111 !important;
+    text-shadow: none !important;
+  }
+
+  /* Retain clean borders */
+  .border, [class*="border-"] {
+    border-color: #dddddd !important;
+  }
+
+  /* Page break rules */
+  .page-break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .page-break-after {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  /* Force display of dossier intel content */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+  }
+}
+

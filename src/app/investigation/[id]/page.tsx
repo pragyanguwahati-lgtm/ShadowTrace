@@ -12,6 +12,11 @@ import { getCaseById, getCluesForCase, markCaseSolved, getCompletedCaseIds } fro
 import { getScopedStorageKey, getActiveUser, isGuestSession, hasAuthenticatedOrGuest, OperativeAccount } from "@/lib/auth/user-store";
 import { DynamicCase } from "@/lib/engine/procedural-generator";
 import AuthModal from "@/components/AuthModal";
+import CopyButton from "@/components/ui/CopyButton";
+import LastUpdatedBadge from "@/components/ui/LastUpdatedBadge";
+import TacticalConfirmModal from "@/components/ui/TacticalConfirmModal";
+import TacticalAccordion from "@/components/ui/TacticalAccordion";
+import CyberRadarLoader from "@/components/ui/CyberRadarLoader";
 
 function InvestigationContent() {
   const params = useParams();
@@ -23,13 +28,16 @@ function InvestigationContent() {
   const [selectedClue, setSelectedClue] = useState<Clue | null>(null);
   const [showBriefing, setShowBriefing] = useState<boolean>(true);
   const [reviewedClues, setReviewedClues] = useState<string[]>([]);
-  const [osintTraced, setOsintTraced] = useState<boolean>(false);
+  const [completedOsintTasks, setCompletedOsintTasks] = useState<string[]>([]);
   const [showVictoryModal, setShowVictoryModal] = useState<boolean>(false);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [pendingTerminalQuery, setPendingTerminalQuery] = useState<string>("");
   const [authOpen, setAuthOpen] = useState<boolean>(false);
   const [isGuest, setIsGuest] = useState<boolean>(false);
   const [activeUser, setActiveUser] = useState<OperativeAccount | null>(null);
+  const [confirmResetOpen, setConfirmResetOpen] = useState<boolean>(false);
+
+  const REQUIRED_OSINT_COUNT = 4;
 
   // Procedural dynamic case resolution
   const [investigationCase, setInvestigationCase] = useState<DynamicCase>(() => getCaseById(caseId));
@@ -68,16 +76,21 @@ function InvestigationContent() {
 
   const handleResetCase = () => {
     setReviewedClues([]);
-    setOsintTraced(false);
+    setCompletedOsintTasks([]);
     setIsCompleted(false);
     setShowVictoryModal(false);
     if (typeof window !== "undefined") {
+      const clueKey = getScopedStorageKey(`reviewed_clues_${caseId}`);
+      const osintKey = getScopedStorageKey(`osint_tasks_${caseId}`);
+      localStorage.removeItem(clueKey);
+      localStorage.removeItem(osintKey);
       const key = getScopedStorageKey("completed_ids");
       const completed = getCompletedCaseIds().filter((id: string) => id !== investigationCase.id);
       localStorage.setItem(key, JSON.stringify(completed));
       window.dispatchEvent(new Event("shadowtrace-progression-updated"));
       window.dispatchEvent(new Event("shadowtrace-cases-updated"));
     }
+    setConfirmResetOpen(false);
   };
 
   const handleOpenClue = (clue: Clue) => {
@@ -85,8 +98,8 @@ function InvestigationContent() {
     setReviewedClues(prev => {
       if (prev.includes(clue.id)) return prev;
       const updated = [...prev, clue.id];
-      // STRICT REQUIREMENT: BOTH all clues examined AND OSINT traced
-      if (updated.length >= clues.length && osintTraced && !isCompleted) {
+      // STRICT REQUIREMENT: BOTH all clues examined AND all 4 OSINT directives solved
+      if (updated.length >= clues.length && completedOsintTasks.length >= REQUIRED_OSINT_COUNT && !isCompleted) {
         triggerCompletion();
       }
       return updated;
@@ -94,11 +107,15 @@ function InvestigationContent() {
   };
 
   const handleTraceComplete = (target: string) => {
-    setOsintTraced(true);
-    // STRICT REQUIREMENT: BOTH all clues examined AND OSINT traced
-    if (reviewedClues.length >= clues.length && !isCompleted) {
-      triggerCompletion();
-    }
+    setCompletedOsintTasks(prev => {
+      if (prev.includes(target)) return prev;
+      const updated = [...prev, target];
+      // STRICT REQUIREMENT: BOTH all clues examined AND all 4 OSINT directives solved
+      if (reviewedClues.length >= clues.length && updated.length >= REQUIRED_OSINT_COUNT && !isCompleted) {
+        triggerCompletion();
+      }
+      return updated;
+    });
   };
 
   return (
@@ -178,7 +195,7 @@ function InvestigationContent() {
             onClick={() => setActiveTab("terminal")}
             className={`px-3 py-1.5 text-xs font-semibold uppercase tracking-widest rounded-full transition-colors flex items-center gap-1.5 ${activeTab === "terminal" ? "bg-accent text-background" : "bg-surface text-text hover:bg-surface/80"}`}
           >
-            <Terminal className="w-3 h-3" /> OSINT {osintTraced ? "✓" : ""}
+            <Terminal className="w-3 h-3" /> OSINT ({completedOsintTasks.length}/{REQUIRED_OSINT_COUNT}) {completedOsintTasks.length >= REQUIRED_OSINT_COUNT ? "✓" : ""}
           </button>
           <button 
             onClick={() => setActiveTab("timeline")}
@@ -211,12 +228,12 @@ function InvestigationContent() {
               1. Clues ({reviewedClues.length}/{clues.length})
             </span>
             <span className={`px-2 py-0.5 rounded text-[11px] font-semibold flex items-center gap-1 ${
-              osintTraced 
+              completedOsintTasks.length >= REQUIRED_OSINT_COUNT 
                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40" 
                 : "bg-amber-500/10 text-amber-400 border border-amber-500/30"
             }`}>
-              {osintTraced ? <CheckCircle2 className="w-3 h-3" /> : null}
-              2. OSINT Trace {osintTraced ? "Done" : "(Required)"}
+              {completedOsintTasks.length >= REQUIRED_OSINT_COUNT ? <CheckCircle2 className="w-3 h-3" /> : null}
+              2. OSINT Directives ({completedOsintTasks.length}/{REQUIRED_OSINT_COUNT})
             </span>
             {isCompleted && (
               <span className="text-emerald-400 font-bold ml-1">
@@ -224,26 +241,39 @@ function InvestigationContent() {
               </span>
             )}
           </div>
+          {/* Feature 18: Telemetry sync timestamp */}
+          <LastUpdatedBadge prefix="TELEMETRY" className="hidden xl:inline-flex" />
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
+          {/* Feature 17: Reset progress with TacticalConfirmModal */}
+          <button 
+            type="button"
+            onClick={() => setConfirmResetOpen(true)}
+            className="text-xs font-mono text-text/40 hover:text-red-400 flex items-center gap-1 transition-colors cursor-pointer"
+            title="Reset progress for this investigation"
+          >
+            <RotateCcw className="w-3 h-3" />
+            <span className="hidden sm:inline">Reset</span>
+          </button>
+
           {!isCompleted ? (
             <button
               onClick={triggerCompletion}
-              disabled={!(reviewedClues.length >= clues.length && osintTraced)}
+              disabled={!(reviewedClues.length >= clues.length && completedOsintTasks.length >= REQUIRED_OSINT_COUNT)}
               className={`px-3 py-1.5 text-xs font-mono font-bold rounded uppercase flex items-center gap-1.5 transition-all ${
-                reviewedClues.length >= clues.length && osintTraced
+                reviewedClues.length >= clues.length && completedOsintTasks.length >= REQUIRED_OSINT_COUNT
                   ? "bg-accent text-background hover:bg-accent/80 cursor-pointer shadow-lg shadow-accent/20 animate-pulse"
                   : "bg-surface/50 text-text/30 border border-border/40 cursor-not-allowed"
               }`}
               title={
-                reviewedClues.length >= clues.length && osintTraced
+                reviewedClues.length >= clues.length && completedOsintTasks.length >= REQUIRED_OSINT_COUNT
                   ? "All objectives verified! Click to conclude case."
-                  : "Both objectives (1. Clues + 2. OSINT Trace) must be completed to close case."
+                  : "Both objectives (1. All Clues + 2. All 4 OSINT Directives) must be completed to close case."
               }
             >
               <Trophy className="w-3.5 h-3.5" />
-              <span>{reviewedClues.length >= clues.length && osintTraced ? "Submit Findings & Complete Case" : "Complete Both Objectives"}</span>
+              <span>{reviewedClues.length >= clues.length && completedOsintTasks.length >= REQUIRED_OSINT_COUNT ? "Submit Findings & Complete Case" : "Complete Clues & All 4 OSINT Tasks"}</span>
             </button>
           ) : (
             <Link 
@@ -262,6 +292,18 @@ function InvestigationContent() {
           </button>
         </div>
       </div>
+
+      {/* Feature 17: Confirmation Modal for Case Progress Purge */}
+      <TacticalConfirmModal
+        isOpen={confirmResetOpen}
+        title="PURGE CASE DIRECTIVE PROGRESS?"
+        description={`Are you certain you want to purge all reviewed evidence discoveries and OSINT terminal command logs for case "${investigationCase.title}"? This cannot be undone.`}
+        confirmLabel="PURGE PROGRESS"
+        cancelLabel="ABORT"
+        isDestructive={true}
+        onConfirm={handleResetCase}
+        onCancel={() => setConfirmResetOpen(false)}
+      />
       
       {/* Main Workspace Layout */}
       <div className="flex flex-1 gap-6 min-h-0">
@@ -313,6 +355,7 @@ function InvestigationContent() {
               onTraceComplete={handleTraceComplete}
               terminalIntel={investigationCase.terminalIntel}
               externalQuery={pendingTerminalQuery}
+              completedTasks={completedOsintTasks}
             />
           )}
 
@@ -385,9 +428,15 @@ function InvestigationContent() {
                 {selectedClue.type === "image" ? (
                   <img src={selectedClue.content} alt={selectedClue.title} className="w-full h-auto rounded border border-border/50" />
                 ) : (
-                  <pre className="bg-background p-6 rounded whitespace-pre-wrap border border-border/30">
-                    {selectedClue.content}
-                  </pre>
+                  <div className="relative">
+                    <div className="absolute top-3 right-3 z-10">
+                      {/* Feature 9: Copy Button */}
+                      <CopyButton textToCopy={selectedClue.content} label="COPY RAW INTEL" />
+                    </div>
+                    <pre className="bg-background p-6 pt-10 rounded whitespace-pre-wrap border border-border/30">
+                      {selectedClue.content}
+                    </pre>
+                  </div>
                 )}
               </div>
             </motion.div>
@@ -407,7 +456,7 @@ function InvestigationContent() {
             >
               <button
                 onClick={() => setShowBriefing(false)}
-                className="absolute top-5 right-5 text-text/40 hover:text-text transition-colors"
+                className="absolute top-5 right-5 text-text/40 hover:text-text transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -425,44 +474,40 @@ function InvestigationContent() {
                 {investigationCase.briefingText}
               </p>
 
-              {/* Beginner Roadmap */}
-              <div className="border border-border/60 bg-background/60 rounded-lg p-5 mb-6">
+              {/* Feature 19: Expandable Tactical FAQ Accordion */}
+              <div className="mb-6">
                 <h3 className="text-xs font-mono uppercase tracking-widest text-accent mb-3 font-semibold flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Investigation Protocol (Beginner&apos;s Guide)
+                  Field Directives & Frequently Asked Questions
                 </h3>
-                <div className="space-y-3 text-xs text-text/80 font-mono">
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-surface border border-accent/40 text-accent flex items-center justify-center shrink-0 font-bold">1</span>
-                    <div>
-                      <strong className="text-text">Inspect Evidence Board:</strong> Click on each clue card to read raw access logs, intercepted emails, and aerial surveillance photos.
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-surface border border-accent/40 text-accent flex items-center justify-center shrink-0 font-bold">2</span>
-                    <div>
-                      <strong className="text-text">Correlate Anomalies:</strong> In <span className="text-accent">Server Access Logs</span>, identify rogue IP <code className="bg-surface px-1 py-0.5 rounded text-accent">{investigationCase.terminalIntel?.targetIp || "10.5.22.1"}</code> and its connection to the syndicate <span className="text-text font-bold">&quot;{investigationCase.terminalIntel?.syndicateName || "The Silent Hand"}&quot;</span>.
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-surface border border-accent/40 text-accent flex items-center justify-center shrink-0 font-bold">3</span>
-                    <div>
-                      <strong className="text-text">Tactical Progressive Hints:</strong> Use the field guidance panel on the right. Unlock sequential hints and instructions as you progress to verify deductions without spoilers.
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-surface border border-accent/40 text-accent flex items-center justify-center shrink-0 font-bold">4</span>
-                    <div>
-                      <strong className="text-text">Reconstruct Timeline:</strong> Switch to the <span className="text-text font-bold">Timeline</span> tab to establish the chronological sequence leading up to the 22:00 exchange.
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-surface border border-accent/40 text-accent flex items-center justify-center shrink-0 font-bold">5</span>
-                    <div>
-                      <strong className="text-text">Compile Official Dossier:</strong> Navigate to <span className="text-text font-bold">Case Reports</span> in the navigation bar to download your official PDF findings.
-                    </div>
-                  </div>
-                </div>
+                <TacticalAccordion
+                  items={[
+                    {
+                      id: "faq-objectives",
+                      question: "How do I mark this case solved?",
+                      answer: `To close this case, you must inspect all ${clues.length} clue cards on the Evidence Board and execute all 4 discrete OSINT directives in the interactive terminal (1. C2 Trace, 2. Host Port Scan, 3. WHOIS Ownership, and 4. Syndicate Intelligence). Once both counters turn green, the submit button is unlocked.`,
+                      category: "CRITICAL",
+                    },
+                    {
+                      id: "faq-terminal",
+                      question: "What terminal commands are available?",
+                      answer: "The tactical console supports 'trace <ip>', 'scan <ip>', 'whois <domain>', 'intel <syndicate>', 'history', 'cat <file>', and 'help'. Click any quick-command shortcut or type manually to gather OSINT payload data.",
+                      category: "TERMINAL",
+                    },
+                    {
+                      id: "faq-hints",
+                      question: "Will using hints penalize my clearance level?",
+                      answer: "No. Progressive tactical hints are calibrated to guide junior field operatives without spoilers. Each tier provides escalating fidelity until the deduction clicks.",
+                      category: "HINTS",
+                    },
+                    {
+                      id: "faq-persistence",
+                      question: "Is my case progress saved across reloads?",
+                      answer: "Yes, provided you are signed in under an Operative ID. Guest sessions run locally in temporary memory and are purged once the tab or browser session ends.",
+                      category: "SECURITY",
+                    },
+                  ]}
+                />
               </div>
 
               <div className="flex items-center justify-between pt-2">
@@ -471,7 +516,7 @@ function InvestigationContent() {
                 </span>
                 <button
                   onClick={() => setShowBriefing(false)}
-                  className="bg-accent text-background font-semibold text-xs tracking-wider uppercase px-5 py-2.5 rounded-full hover:bg-accent/80 transition-colors shadow-lg"
+                  className="bg-accent text-background font-semibold text-xs tracking-wider uppercase px-5 py-2.5 rounded-full hover:bg-accent/80 transition-colors shadow-lg cursor-pointer"
                 >
                   Enter Console
                 </button>
@@ -543,6 +588,14 @@ function InvestigationContent() {
                   </div>
                   <div className="flex items-start gap-2 text-text/90">
                     <span className="text-emerald-400 font-bold shrink-0">[✓]</span>
+                    <span>All {clues.length}/{clues.length} evidentiary forensic files inspected and correlated.</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-text/90">
+                    <span className="text-emerald-400 font-bold shrink-0">[✓]</span>
+                    <span>All 4/4 tactical OSINT intelligence directives executed and verified in terminal.</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-text/90">
+                    <span className="text-emerald-400 font-bold shrink-0">[✓]</span>
                     <span>Correlated breach token to internal workstation ({investigationCase.terminalIntel?.internalIp || "192.168.1.104"}).</span>
                   </div>
                   <div className="flex items-start gap-2 text-text/90">
@@ -600,8 +653,9 @@ function InvestigationContent() {
 export default function InvestigationPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center flex-1 h-full min-h-[50vh] text-text/50 font-mono text-sm">
-        <span className="animate-pulse">INITIALIZING TACTICAL CONSOLE...</span>
+      <div className="flex items-center justify-center flex-1 h-full min-h-[60vh]">
+        {/* Feature 6: Cyber Loading Animation */}
+        <CyberRadarLoader label="INITIALIZING TACTICAL CONSOLE · DECRYPTING ARTIFACTS..." size="lg" />
       </div>
     }>
       <InvestigationContent />
