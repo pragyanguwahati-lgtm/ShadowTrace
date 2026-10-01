@@ -18,6 +18,23 @@ export function getOrGenerateActiveCases(): DynamicCase[] {
     return generateSyndicateOperation(12345);
   }
 
+  const activeUser = getActiveUser();
+  // Guest mode uses volatile session storage (not permanently saved)
+  if (!activeUser) {
+    try {
+      const guestStored = sessionStorage.getItem("shadowtrace_guest_cases");
+      if (guestStored) {
+        const parsed: DynamicCase[] = JSON.parse(guestStored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return syncLockStates(parsed);
+        }
+      }
+    } catch {}
+    const freshGuestCases = generateSyndicateOperation(Date.now());
+    saveActiveCases(freshGuestCases);
+    return freshGuestCases;
+  }
+
   const key = getScopedStorageKey("active_cases");
   try {
     const stored = localStorage.getItem(key);
@@ -39,9 +56,15 @@ export function getOrGenerateActiveCases(): DynamicCase[] {
 
 /**
  * Saves active cases to user-scoped storage.
+ * In Guest mode, uses volatile sessionStorage so progress is not permanently stored.
  */
 export function saveActiveCases(cases: DynamicCase[]): void {
   if (!isClient()) return;
+  const activeUser = getActiveUser();
+  if (!activeUser) {
+    sessionStorage.setItem("shadowtrace_guest_cases", JSON.stringify(cases));
+    return;
+  }
   const key = getScopedStorageKey("active_cases");
   localStorage.setItem(key, JSON.stringify(cases));
 }
@@ -76,6 +99,8 @@ export function generateNewOperation(): DynamicCase[] {
  */
 export function getCompletedCaseIds(): string[] {
   if (!isClient()) return [];
+  // Guest mode: progress is not stored permanently
+  if (!getActiveUser()) return [];
   const key = getScopedStorageKey("completed_ids");
   try {
     const raw = localStorage.getItem(key);
@@ -90,6 +115,8 @@ export function getCompletedCaseIds(): string[] {
  */
 export function getCaseHistory(): DynamicCase[] {
   if (!isClient()) return [];
+  // Guest mode: historical cases are not stored
+  if (!getActiveUser()) return [];
   const key = getScopedStorageKey("history_cases");
   try {
     const raw = localStorage.getItem(key);
@@ -101,9 +128,23 @@ export function getCaseHistory(): DynamicCase[] {
 
 /**
  * Marks a case as solved, awards clearance XP, and archives to history.
+ * In Guest mode, progress is NOT stored.
  */
 export function markCaseSolved(caseId: string): void {
   if (!isClient()) return;
+
+  // In Guest Mode: Progress is NOT stored permanently!
+  if (!getActiveUser()) {
+    const active = getOrGenerateActiveCases();
+    const target = active.find(c => c.id === caseId);
+    if (target) {
+      target.isSolved = true;
+      saveActiveCases(active);
+    }
+    window.dispatchEvent(new Event("shadowtrace-progression-updated"));
+    window.dispatchEvent(new Event("shadowtrace-cases-updated"));
+    return;
+  }
 
   const completed = getCompletedCaseIds();
   if (!completed.includes(caseId)) {

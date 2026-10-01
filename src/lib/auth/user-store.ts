@@ -54,14 +54,55 @@ export function getActiveUser(): OperativeAccount | null {
   }
 }
 
+const GUEST_SESSION_KEY = "shadowtrace_guest_session";
+
+/**
+ * Returns true if the user is in an unauthenticated Guest session.
+ */
+export function isGuestSession(): boolean {
+  if (!isClient()) return false;
+  if (getActiveUser() !== null) return false;
+  return sessionStorage.getItem(GUEST_SESSION_KEY) === "true";
+}
+
+/**
+ * Explicitly marks the current session as a Guest session (no progress stored).
+ */
+export function enableGuestSession(): void {
+  if (!isClient()) return;
+  sessionStorage.setItem(GUEST_SESSION_KEY, "true");
+  window.dispatchEvent(new Event("shadowtrace-auth-updated"));
+  window.dispatchEvent(new Event("shadowtrace-progression-updated"));
+}
+
+/**
+ * Clears guest session state upon login or logout.
+ */
+export function clearGuestSession(): void {
+  if (!isClient()) return;
+  sessionStorage.removeItem(GUEST_SESSION_KEY);
+  window.dispatchEvent(new Event("shadowtrace-auth-updated"));
+  window.dispatchEvent(new Event("shadowtrace-progression-updated"));
+}
+
+/**
+ * Checks if the operative has either logged in or explicitly acknowledged guest mode.
+ */
+export function hasAuthenticatedOrGuest(): boolean {
+  if (!isClient()) return false;
+  return getActiveUser() !== null || isGuestSession();
+}
+
 /**
  * Generates an isolated storage key scoped exclusively to the currently logged in user.
  * Prevents user-to-user data tampering or leaks.
  */
 export function getScopedStorageKey(keySuffix: string): string {
   const active = getActiveUser();
-  const userId = active ? active.id : "guest_operative";
-  return `shadowtrace_user_${userId}_${keySuffix}`;
+  if (active) {
+    return `shadowtrace_user_${active.id}_${keySuffix}`;
+  }
+  return `shadowtrace_guest_session_${keySuffix}`;
 }
 
 /**
@@ -133,7 +174,7 @@ export async function loginOperative(
     return { success: false, error: "Authentication failed. Invalid cryptographic credentials." };
   }
 
-  // Set active session
+  clearGuestSession();
   localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(user));
   window.dispatchEvent(new Event("shadowtrace-auth-updated"));
   window.dispatchEvent(new Event("shadowtrace-progression-updated"));
@@ -147,6 +188,7 @@ export async function loginOperative(
 export function logoutOperative(): void {
   if (!isClient()) return;
   localStorage.removeItem(ACTIVE_SESSION_KEY);
+  clearGuestSession();
   window.dispatchEvent(new Event("shadowtrace-auth-updated"));
   window.dispatchEvent(new Event("shadowtrace-progression-updated"));
 }

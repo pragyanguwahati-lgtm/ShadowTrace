@@ -13,7 +13,8 @@ import {
   Layers, 
   History, 
   Compass, 
-  ExternalLink 
+  ExternalLink,
+  AlertTriangle 
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -25,8 +26,14 @@ import {
   getCompletedCaseIds, 
   getCaseHistory 
 } from "@/lib/engine/case-store";
-import { getActiveUser, OperativeAccount } from "@/lib/auth/user-store";
+import { 
+  getActiveUser, 
+  isGuestSession, 
+  hasAuthenticatedOrGuest, 
+  OperativeAccount 
+} from "@/lib/auth/user-store";
 import { startSession } from "@/lib/firebase/actions";
+import AuthModal from "@/components/AuthModal";
 
 export default function CasesPage() {
   const [hoveredCase, setHoveredCase] = useState<string | null>(null);
@@ -37,13 +44,18 @@ export default function CasesPage() {
   const [clearanceLevel, setClearanceLevel] = useState<string>("4");
   const [operativeRank, setOperativeRank] = useState<string>("Cyber Investigator");
   const [activeUser, setActiveUser] = useState<OperativeAccount | null>(null);
+  const [isGuest, setIsGuest] = useState<boolean>(false);
+  const [authOpen, setAuthOpen] = useState<boolean>(false);
+  const [pendingCase, setPendingCase] = useState<DynamicCase | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const router = useRouter();
 
   const loadAllData = () => {
     if (typeof window !== "undefined") {
       const user = getActiveUser();
+      const guest = isGuestSession();
       setActiveUser(user);
+      setIsGuest(guest);
       if (user) {
         setClearanceLevel(user.clearanceLevel || "4");
         setOperativeRank(user.operativeRank || "Cyber Investigator");
@@ -65,6 +77,9 @@ export default function CasesPage() {
 
   useEffect(() => {
     loadAllData();
+    if (!hasAuthenticatedOrGuest()) {
+      setAuthOpen(true);
+    }
     window.addEventListener("shadowtrace-cases-updated", loadAllData);
     window.addEventListener("shadowtrace-progression-updated", loadAllData);
     window.addEventListener("shadowtrace-auth-updated", loadAllData);
@@ -86,6 +101,11 @@ export default function CasesPage() {
 
   const handleCaseSelect = (c: DynamicCase) => {
     if (c.isLocked) return;
+    if (!hasAuthenticatedOrGuest()) {
+      setPendingCase(c);
+      setAuthOpen(true);
+      return;
+    }
     setIsLoading(true);
     startSession(c.id).catch((err) => console.warn("Session tracking error:", err));
     router.push(`/investigation/${c.id}`);
@@ -95,13 +115,29 @@ export default function CasesPage() {
 
   return (
     <div className="flex flex-col min-h-screen pb-16 max-w-7xl mx-auto w-full px-6 lg:px-16">
+      {/* Operative Registration / Guest Prompt Modal */}
+      <AuthModal 
+        isOpen={authOpen} 
+        onClose={() => setAuthOpen(false)} 
+        onSuccess={() => {
+          setAuthOpen(false);
+          loadAllData();
+          if (pendingCase) {
+            setIsLoading(true);
+            startSession(pendingCase.id).catch(console.warn);
+            router.push(`/investigation/${pendingCase.id}`);
+          }
+        }}
+        promptTitle="Save Your Progress Before Starting Cases"
+        promptDescription="Create an Operative ID to save your deductions, clearance rank, and solved dossiers. Or proceed in Guest Mode where progress is not stored."
+      />
       
       {/* Header with Operative Clearance Level Ribbon */}
       <motion.header 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="mb-10 mt-6"
+        className="mb-8 mt-6"
       >
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <div className="flex flex-wrap items-center gap-2.5 px-3.5 py-1.5 rounded-full border border-accent/40 bg-accent/10 text-accent font-mono text-xs font-semibold uppercase tracking-wider">
@@ -144,6 +180,40 @@ export default function CasesPage() {
           </p>
         </div>
       </motion.header>
+
+      {/* Guest Mode Notice Banner */}
+      {isGuest && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 p-4 sm:p-5 rounded-2xl border border-amber/40 bg-gradient-to-r from-amber/15 via-black/60 to-surface/40 backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg shadow-amber/5"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-amber/20 border border-amber/40 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 text-amber" />
+            </div>
+            <div className="font-mono text-xs">
+              <div className="text-amber font-bold uppercase tracking-wider flex items-center gap-2">
+                <span>Guest Session Active</span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-amber/20 border border-amber/30 text-amber font-semibold">
+                  PROGRESS NOT SAVED
+                </span>
+              </div>
+              <div className="text-text/70 mt-1 font-sans text-xs">
+                You can investigate all active cases, but solved dossiers and clearance levels will not be saved after this session.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAuthOpen(true)}
+            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-amber hover:bg-amber-400 text-black font-mono font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(255,176,32,0.3)] shrink-0 cursor-pointer flex items-center justify-center gap-2"
+          >
+            <span>Create ID &amp; Save Progress</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </motion.div>
+      )}
 
       {/* Case Directory */}
       <div className="flex flex-col gap-6 flex-1 mb-16">

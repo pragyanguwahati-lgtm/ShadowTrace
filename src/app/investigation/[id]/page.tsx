@@ -4,13 +4,14 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Search, FolderOpen, Maximize2, X, Terminal, Clock, HelpCircle, ShieldAlert, CheckCircle2, ChevronRight, Trophy, ArrowRight, Award, ShieldCheck, Zap, RotateCcw, Lightbulb } from "lucide-react";
+import { Search, FolderOpen, Maximize2, X, Terminal, Clock, HelpCircle, ShieldAlert, CheckCircle2, ChevronRight, Trophy, ArrowRight, Award, ShieldCheck, Zap, RotateCcw, Lightbulb, AlertTriangle } from "lucide-react";
 import { Clue } from "@/lib/firebase/schema";
 import TacticalHintsPanel from "@/components/TacticalHintsPanel";
 import OSINTTerminal from "@/components/OSINTTerminal";
 import { getCaseById, getCluesForCase, markCaseSolved, getCompletedCaseIds } from "@/lib/engine/case-store";
-import { getScopedStorageKey } from "@/lib/auth/user-store";
+import { getScopedStorageKey, getActiveUser, isGuestSession, hasAuthenticatedOrGuest, OperativeAccount } from "@/lib/auth/user-store";
 import { DynamicCase } from "@/lib/engine/procedural-generator";
+import AuthModal from "@/components/AuthModal";
 
 function InvestigationContent() {
   const params = useParams();
@@ -26,12 +27,25 @@ function InvestigationContent() {
   const [showVictoryModal, setShowVictoryModal] = useState<boolean>(false);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [pendingTerminalQuery, setPendingTerminalQuery] = useState<string>("");
+  const [authOpen, setAuthOpen] = useState<boolean>(false);
+  const [isGuest, setIsGuest] = useState<boolean>(false);
+  const [activeUser, setActiveUser] = useState<OperativeAccount | null>(null);
 
   // Procedural dynamic case resolution
   const [investigationCase, setInvestigationCase] = useState<DynamicCase>(() => getCaseById(caseId));
   const [clues, setClues] = useState<Clue[]>(() => getCluesForCase(caseId));
 
   useEffect(() => {
+    const syncAuth = () => {
+      setActiveUser(getActiveUser());
+      setIsGuest(isGuestSession());
+    };
+    syncAuth();
+    if (!hasAuthenticatedOrGuest()) {
+      setAuthOpen(true);
+    }
+    window.addEventListener("shadowtrace-auth-updated", syncAuth);
+
     const loadedCase = getCaseById(caseId);
     const loadedClues = getCluesForCase(caseId);
     setInvestigationCase(loadedCase);
@@ -40,6 +54,8 @@ function InvestigationContent() {
     if (completed.includes(loadedCase.id)) {
       setIsCompleted(true);
     }
+
+    return () => window.removeEventListener("shadowtrace-auth-updated", syncAuth);
   }, [caseId]);
 
   const triggerCompletion = () => {
@@ -87,6 +103,14 @@ function InvestigationContent() {
 
   return (
     <div className="flex flex-col flex-1 h-full overflow-hidden">
+      {/* Operative Registration / Guest Prompt Modal */}
+      <AuthModal 
+        isOpen={authOpen} 
+        onClose={() => setAuthOpen(false)} 
+        promptTitle="Save Your Investigation Progress"
+        promptDescription="Sign in or register an Operative ID so your evidence discoveries, terminal traces, and solved status are saved. Or continue as Guest (progress is not stored)."
+      />
+
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 pb-4 border-b border-border/50">
         <div>
@@ -95,6 +119,17 @@ function InvestigationContent() {
             <span className="px-2 py-0.5 text-[10px] uppercase font-mono tracking-widest bg-accent/10 border border-accent/30 text-accent rounded">
               Active Case
             </span>
+            {isGuest && (
+              <button
+                type="button"
+                onClick={() => setAuthOpen(true)}
+                className="px-2.5 py-0.5 text-[10px] uppercase font-mono tracking-widest bg-amber/15 border border-amber/40 text-amber hover:border-amber rounded font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Guest Mode: Progress is not saved. Click to create an account."
+              >
+                <AlertTriangle className="w-3 h-3 text-amber shrink-0" />
+                <span>Guest (Unsaved)</span>
+              </button>
+            )}
             {isCompleted && (
               <span className="px-2 py-0.5 text-[10px] uppercase font-mono tracking-widest bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 rounded font-bold flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" /> Solved
@@ -519,6 +554,23 @@ function InvestigationContent() {
                     <span>Discovered physical rendezvous at {investigationCase.terminalIntel?.locationName || "Pier 42"} [{investigationCase.terminalIntel?.coordinates || "37°48'N"}].</span>
                   </div>
                 </div>
+
+                {/* Guest Mode Notice in Victory Modal */}
+                {isGuest && (
+                  <div className="border border-amber/40 bg-amber/10 rounded-xl p-3.5 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono text-amber">
+                    <div className="flex items-center gap-2.5">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-amber" />
+                      <span>Guest Session: This solved case and clearance rank will NOT be stored permanently.</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAuthOpen(true)}
+                      className="px-3.5 py-1.5 rounded-lg bg-amber hover:bg-amber-400 text-black font-bold uppercase text-[10px] tracking-wider transition-colors shrink-0 cursor-pointer shadow-sm"
+                    >
+                      Create ID &amp; Save Progress
+                    </button>
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="flex flex-col sm:flex-row items-center gap-3 justify-end pt-2">

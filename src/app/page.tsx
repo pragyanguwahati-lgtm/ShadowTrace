@@ -20,14 +20,36 @@ import {
 } from "lucide-react";
 import TacticalShaderBackground from "@/components/TacticalShaderBackground";
 import OSINTPracticeSandbox from "@/components/OSINTPracticeSandbox";
+import AuthModal from "@/components/AuthModal";
+import { hasAuthenticatedOrGuest } from "@/lib/auth/user-store";
 
 type EvidenceKey = "adsb" | "audio" | "photo" | "registry";
 
 export default function Home() {
+  const router = useRouter();
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceKey>("adsb");
+  const [authOpen, setAuthOpen] = useState(false);
+  const [pendingDestination, setPendingDestination] = useState<string>("/cases");
+
+  const handleStartCase = (e: React.MouseEvent, destination: string) => {
+    if (!hasAuthenticatedOrGuest()) {
+      e.preventDefault();
+      setPendingDestination(destination);
+      setAuthOpen(true);
+    }
+  };
 
   return (
     <div className="relative w-full text-text overflow-x-hidden min-h-screen">
+      {/* Operative Registration / Guest Prompt Modal */}
+      <AuthModal 
+        isOpen={authOpen} 
+        onClose={() => setAuthOpen(false)} 
+        onSuccess={() => router.push(pendingDestination)}
+        promptTitle="Save Your Operative Progress"
+        promptDescription="Create an account to retain your solved dossiers, deductions, and clearance level before starting. Or continue in Guest Mode (progress is not stored)."
+      />
+
       {/* 1. Exact Living WebGL Background Shader from HTML Mockup */}
       <TacticalShaderBackground />
 
@@ -132,6 +154,7 @@ export default function Home() {
           >
             <Link
               href="/cases"
+              onClick={(e) => handleStartCase(e, "/cases")}
               className="inline-flex items-center gap-3 font-mono font-bold text-sm sm:text-base text-[#0a0c11] bg-cyan-400 hover:bg-cyan-300 px-8 py-3.5 sm:py-4 rounded-full transition-all duration-300 shadow-[0_0_30px_rgba(34,224,255,0.45)] hover:shadow-[0_0_45px_rgba(34,224,255,0.7)] cursor-pointer group"
             >
               <span>Initialize Briefing</span>
@@ -367,6 +390,7 @@ export default function Home() {
                 </p>
                 <Link
                   href="/investigation/phantom-protocol"
+                  onClick={(e) => handleStartCase(e, "/investigation/phantom-protocol")}
                   className="mt-auto pt-4 inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-cyan-300 hover:underline"
                 >
                   <span>Open case file</span>
@@ -401,6 +425,7 @@ export default function Home() {
                 </p>
                 <Link
                   href="/investigation/operation-midnight"
+                  onClick={(e) => handleStartCase(e, "/investigation/operation-midnight")}
                   className="mt-auto pt-4 inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-amber hover:underline"
                 >
                   <span>Open case file</span>
@@ -455,6 +480,7 @@ export default function Home() {
                 </p>
                 <Link
                   href="/cases"
+                  onClick={(e) => handleStartCase(e, "/cases")}
                   className="mt-auto pt-4 inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-cyan-300 hover:underline"
                 >
                   <span>Open case file</span>

@@ -18,22 +18,42 @@ import {
   registerOperative, 
   loginOperative, 
   logoutOperative, 
+  enableGuestSession,
   OperativeAccount 
 } from "@/lib/auth/user-store";
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
+  initialMode?: "login" | "register";
+  promptTitle?: string;
+  promptDescription?: string;
 }
 
-export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
+export default function AuthModal({ 
+  isOpen, 
+  onClose, 
+  onSuccess,
+  initialMode = "register",
+  promptTitle,
+  promptDescription
+}: AuthModalProps) {
   const [currentUser, setCurrentUser] = useState<OperativeAccount | null>(null);
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setErrorMsg(null);
+      setSuccessMsg(null);
+    }
+  }, [isOpen, initialMode]);
 
   useEffect(() => {
     const syncUser = () => {
@@ -61,6 +81,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           setSuccessMsg(`Operative profile created! Welcome, ${res.user?.username}.`);
           setTimeout(() => {
             onClose();
+            onSuccess?.();
           }, 800);
         }
       } else {
@@ -71,6 +92,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           setSuccessMsg(`Authenticated. Welcome back, ${res.user?.username}.`);
           setTimeout(() => {
             onClose();
+            onSuccess?.();
           }, 700);
         }
       }
@@ -161,10 +183,32 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </div>
             ) : (
               // Login / Register Form
-              <div className="space-y-5">
+              <div className="space-y-4">
                 
+                {/* Save Progress Prompt Callout */}
+                <div className="p-3.5 rounded-xl border border-cyan-400/40 bg-gradient-to-r from-cyan-950/40 via-cyan-900/20 to-black/40 space-y-1">
+                  <div className="flex items-center gap-2 text-cyan-300 text-xs font-bold uppercase tracking-wider">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                    <span>{promptTitle || "Save Your Progress Before Starting"}</span>
+                  </div>
+                  <p className="text-[11px] text-muted leading-relaxed font-sans">
+                    {promptDescription || "Create an account to retain your solved cases, deductions, and clearance level. If you decline, you can continue in Guest Mode where no progress is stored."}
+                  </p>
+                </div>
+
                 {/* Mode Switcher */}
                 <div className="flex rounded-lg border border-cyan-400/20 bg-black/40 p-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => { setMode("register"); setErrorMsg(null); }}
+                    className={`flex-1 py-1.5 rounded-md transition-all font-bold ${
+                      mode === "register"
+                        ? "bg-cyan-400 text-black shadow-sm"
+                        : "text-muted hover:text-white"
+                    }`}
+                  >
+                    Create Operative ID
+                  </button>
                   <button
                     type="button"
                     onClick={() => { setMode("login"); setErrorMsg(null); }}
@@ -176,23 +220,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   >
                     Sign In
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => { setMode("register"); setErrorMsg(null); }}
-                    className={`flex-1 py-1.5 rounded-md transition-all font-bold ${
-                      mode === "register"
-                        ? "bg-cyan-400 text-black shadow-sm"
-                        : "text-muted hover:text-white"
-                    }`}
-                  >
-                    Create ID
-                  </button>
-                </div>
-
-                <div className="text-xs text-muted leading-relaxed font-sans">
-                  {mode === "register" 
-                    ? "Establish a new isolated operative identity. Your cases and progress will be securely partitioned."
-                    : "Enter your operative credentials to access your isolated cases and progression history."}
                 </div>
 
                 {errorMsg && (
@@ -252,12 +279,31 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   <button
                     type="submit"
                     disabled={isSubmitting || !username.trim() || !password.trim()}
-                    className="w-full mt-2 py-3 rounded-lg bg-cyan-400 hover:bg-cyan-300 disabled:opacity-50 text-black font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(34,224,255,0.4)] flex items-center justify-center gap-2"
+                    className="w-full mt-2 py-3 rounded-lg bg-cyan-400 hover:bg-cyan-300 disabled:opacity-50 text-black font-bold text-xs uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(34,224,255,0.4)] flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <span>{isSubmitting ? "Authenticating..." : mode === "register" ? "Initialize Operative ID" : "Authenticate & Proceed"}</span>
+                    <span>{isSubmitting ? "Authenticating..." : mode === "register" ? "Create Operative ID & Save Progress" : "Authenticate & Proceed"}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </form>
+
+                {/* Continue as Guest option */}
+                <div className="pt-3 border-t border-cyan-400/15 text-center space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      enableGuestSession();
+                      onClose();
+                      onSuccess?.();
+                    }}
+                    className="w-full py-2.5 px-4 rounded-lg border border-border/80 bg-surface/50 hover:bg-surface/80 hover:border-amber/50 text-xs font-mono text-text/80 hover:text-amber transition-all flex items-center justify-center gap-2 group cursor-pointer"
+                  >
+                    <span>Continue in Guest Mode (No Progress Saved)</span>
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform text-amber" />
+                  </button>
+                  <p className="text-[10px] text-muted/60 leading-normal">
+                    Guest mode enables full access to all investigations, but deductions, clearance XP, and history will not be preserved after this session.
+                  </p>
+                </div>
 
               </div>
             )}

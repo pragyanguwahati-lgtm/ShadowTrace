@@ -13,9 +13,10 @@ import {
   markCaseSolved,
   getCaseHistory 
 } from "@/lib/engine/case-store";
-import { getActiveUser, OperativeAccount } from "@/lib/auth/user-store";
+import { getActiveUser, isGuestSession, OperativeAccount } from "@/lib/auth/user-store";
 import { DynamicCase } from "@/lib/engine/procedural-generator";
-import { Download, ArrowRight, ShieldCheck, Trophy, Award, CheckCircle2, FileText, ChevronRight } from "lucide-react";
+import { Download, ArrowRight, ShieldCheck, Trophy, Award, CheckCircle2, FileText, ChevronRight, AlertTriangle } from "lucide-react";
+import AuthModal from "@/components/AuthModal";
 
 function ReportContent() {
   const [isClient, setIsClient] = useState(false);
@@ -23,13 +24,17 @@ function ReportContent() {
   const [clearanceLevel, setClearanceLevel] = useState<string>("4");
   const [operativeRank, setOperativeRank] = useState<string>("Cyber Investigator");
   const [activeUser, setActiveUser] = useState<OperativeAccount | null>(null);
+  const [isGuest, setIsGuest] = useState<boolean>(false);
+  const [authOpen, setAuthOpen] = useState<boolean>(false);
   const searchParams = useSearchParams();
   const justSolvedId = searchParams.get("solved");
 
   const loadData = () => {
     if (typeof window !== "undefined") {
       const user = getActiveUser();
+      const guest = isGuestSession();
       setActiveUser(user);
+      setIsGuest(guest);
       if (user) {
         setClearanceLevel(user.clearanceLevel || "4");
         setOperativeRank(user.operativeRank || "Cyber Investigator");
@@ -62,12 +67,24 @@ function ReportContent() {
 
   return (
     <div className="flex flex-col max-w-5xl mx-auto w-full px-4 sm:px-6 pb-16">
+      {/* Operative Registration / Guest Prompt Modal */}
+      <AuthModal 
+        isOpen={authOpen} 
+        onClose={() => setAuthOpen(false)} 
+        onSuccess={() => {
+          setAuthOpen(false);
+          loadData();
+        }}
+        promptTitle="Save Your Dossiers & Clearance"
+        promptDescription="Create an Operative ID to permanently archive completed debriefs and keep your clearance credentials. Or continue in Guest Mode (progress is not stored)."
+      />
+
       {/* Page Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="mb-8 mt-4"
+        className="mb-6 mt-4"
       >
         <div className="flex items-center gap-3 text-xs font-mono text-accent uppercase tracking-widest mb-2">
           <FileText className="w-4 h-4" />
@@ -78,6 +95,40 @@ function ReportContent() {
           Official post-operation debriefs and cryptographically signed intelligence dossiers for verified operatives.
         </p>
       </motion.div>
+
+      {/* Guest Mode Notice Banner */}
+      {isGuest && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 p-4 rounded-xl border border-amber/40 bg-gradient-to-r from-amber/15 via-black/50 to-surface/40 backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg shadow-amber/5"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-amber/20 border border-amber/40 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-4 h-4 text-amber" />
+            </div>
+            <div className="font-mono text-xs">
+              <div className="text-amber font-bold uppercase tracking-wider flex items-center gap-2">
+                <span>Guest Session Active</span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-amber/20 border border-amber/30 text-amber font-semibold">
+                  UNARCHIVED
+                </span>
+              </div>
+              <div className="text-text/70 mt-0.5 font-sans">
+                Dossier debriefs and clearances are volatile and will be lost after this session unless saved to an Operative ID.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAuthOpen(true)}
+            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-amber hover:bg-amber-400 text-black font-mono font-bold text-xs uppercase tracking-wider transition-all shadow-sm shrink-0 cursor-pointer flex items-center justify-center gap-2"
+          >
+            <span>Create Operative ID &amp; Save</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </motion.div>
+      )}
 
       {/* Operative Clearance Status Banner */}
       <motion.div
