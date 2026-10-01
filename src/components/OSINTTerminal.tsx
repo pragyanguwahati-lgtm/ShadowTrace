@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Terminal, Send, ArrowRight, CornerDownLeft, Sparkles, Trash2 } from "lucide-react";
+import { Terminal, Send, ArrowRight, CornerDownLeft, Sparkles, Trash2, ShieldCheck } from "lucide-react";
+import { sanitizeTerminalInput } from "@/lib/security/sanitize";
+import { TerminalIntelligence } from "@/lib/engine/procedural-generator";
 
 interface TerminalLine {
   type: "system" | "user" | "success" | "error" | "warning" | "intel";
@@ -10,9 +12,15 @@ interface TerminalLine {
 
 interface OSINTTerminalProps {
   onTraceComplete?: (intelKey: string) => void;
+  terminalIntel?: TerminalIntelligence;
+  externalQuery?: string;
 }
 
-export default function OSINTTerminal({ onTraceComplete }: OSINTTerminalProps) {
+export default function OSINTTerminal({ 
+  onTraceComplete, 
+  terminalIntel, 
+  externalQuery 
+}: OSINTTerminalProps) {
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<TerminalLine[]>([
     { type: "system", text: "ShadowTrace Tactical OSINT v3.4 [Relay: SECURE_TUNNEL_09]" },
@@ -27,8 +35,15 @@ export default function OSINTTerminal({ onTraceComplete }: OSINTTerminalProps) {
     terminalBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [history, isProcessing]);
 
+  useEffect(() => {
+    if (externalQuery) {
+      executeCommand(externalQuery);
+    }
+  }, [externalQuery]);
+
   const executeCommand = async (rawQuery: string) => {
-    const query = rawQuery.trim();
+    const sanitized = sanitizeTerminalInput(rawQuery);
+    const query = sanitized.trim();
     if (!query || isProcessing) return;
 
     setInput("");
@@ -38,6 +53,15 @@ export default function OSINTTerminal({ onTraceComplete }: OSINTTerminalProps) {
     setHistory(prev => [...prev, { type: "user", text: `> ${query}` }]);
 
     const lower = query.toLowerCase();
+
+    // Contextual target parameters from active case
+    const targetIp = terminalIntel?.targetIp || "10.5.22.1";
+    const internalIp = terminalIntel?.internalIp || "192.168.1.104";
+    const domain = terminalIntel?.domain || "silent-hand.net";
+    const syndicate = terminalIntel?.syndicateName || "The Silent Hand";
+    const suspectHandle = terminalIntel?.suspectHandle || "Operative-9";
+    const coords = terminalIntel?.coordinates || "37°48'14.2\"N 122°16'44.8\"W";
+    const locationName = terminalIntel?.locationName || "Pier 42 Abandoned Industrial Cargo Facility";
 
     // Simulate cyber terminal processing latency
     setTimeout(() => {
@@ -52,11 +76,11 @@ export default function OSINTTerminal({ onTraceComplete }: OSINTTerminalProps) {
       if (lower === "help") {
         setHistory(prev => [
           ...prev,
-          { type: "intel", text: "COMMAND DIRECTORY:" },
-          { type: "system", text: "  trace <ip>       - Trace network route, ASN & geolocation (e.g. trace 10.5.22.1)" },
-          { type: "system", text: "  scan <ip>        - Run port vulnerability audit (e.g. scan 192.168.1.104)" },
-          { type: "system", text: "  whois <target>   - Retrieve registry & owner intelligence (e.g. whois 10.5.22.1)" },
-          { type: "system", text: "  intel <keyword>  - Query classified threat database (e.g. intel Silent Hand)" },
+          { type: "intel", text: "COMMAND DIRECTORY (OPERATIVE PROTOCOL):" },
+          { type: "system", text: `  trace <ip>       - Trace network route, ASN & geolocation (e.g. trace ${targetIp})` },
+          { type: "system", text: `  scan <ip>        - Run port & session vulnerability audit (e.g. scan ${internalIp})` },
+          { type: "system", text: `  whois <target>   - Retrieve registry & owner intelligence (e.g. whois ${domain})` },
+          { type: "system", text: `  intel <keyword>  - Query threat dossier (e.g. intel ${syndicate.split(" ")[0]})` },
           { type: "system", text: "  clear            - Wipe current terminal screen" }
         ]);
         setIsProcessing(false);
@@ -67,7 +91,7 @@ export default function OSINTTerminal({ onTraceComplete }: OSINTTerminalProps) {
         setHistory(prev => [
           ...prev,
           { type: "warning", text: "Syntax Error: Target IP address required." },
-          { type: "system", text: "Example: trace 10.5.22.1" }
+          { type: "system", text: `Example: trace ${targetIp}` }
         ]);
         setIsProcessing(false);
         return;
@@ -77,7 +101,7 @@ export default function OSINTTerminal({ onTraceComplete }: OSINTTerminalProps) {
         setHistory(prev => [
           ...prev,
           { type: "warning", text: "Syntax Error: Target IP address required." },
-          { type: "system", text: "Example: scan 192.168.1.104" }
+          { type: "system", text: `Example: scan ${internalIp}` }
         ]);
         setIsProcessing(false);
         return;
@@ -87,7 +111,7 @@ export default function OSINTTerminal({ onTraceComplete }: OSINTTerminalProps) {
         setHistory(prev => [
           ...prev,
           { type: "warning", text: "Syntax Error: Hostname or IP required." },
-          { type: "system", text: "Example: whois 10.5.22.1" }
+          { type: "system", text: `Example: whois ${domain}` }
         ]);
         setIsProcessing(false);
         return;
@@ -96,74 +120,108 @@ export default function OSINTTerminal({ onTraceComplete }: OSINTTerminalProps) {
       if (lower === "intel") {
         setHistory(prev => [
           ...prev,
-          { type: "warning", text: "Syntax Error: Keyword required." },
-          { type: "system", text: "Example: intel Silent Hand" }
+          { type: "warning", text: "Syntax Error: Threat keyword required." },
+          { type: "system", text: `Example: intel ${syndicate}` }
         ]);
         setIsProcessing(false);
         return;
       }
 
-      if (lower.includes("10.5.22.1")) {
+      // Check for target IP trace (supports dynamic generated case targetIp and fallback 10.5.22.1)
+      if (lower.includes(targetIp.toLowerCase()) || lower.includes("10.5.22.1")) {
+        const customLines = terminalIntel?.customTraces?.[targetIp] || [
+          `[*] Initiating deep packet trace to ${targetIp}...`,
+          "    Hop 1: 192.168.1.1 [Internal Gateway] (0.4ms)",
+          "    Hop 2: 172.16.4.254 [Defense Perimeter Firewall] (1.1ms)",
+          "    Hop 3: 185.220.101.4 [Anonymizing Relay / Tor Node] (24.8ms)",
+          `    Hop 4: ${targetIp} [DESTINATION: ${domain}] (48.7ms)`,
+          "=== WHOIS & ASN INTELLIGENCE REPORT ===",
+          `  Host Name: relay-c2.${domain}`,
+          `  Autonomous System: AS9498 (${syndicate} DarkNet Transit)`,
+          `  Geo Location: Offshore bulletproof datacenter [Active Relay]`,
+          "  Open Ports: 22 (SSH), 443 (HTTPS), 8080 (Encrypted C2 Proxy)",
+          "  THREAT ATTRIBUTION: CRITICAL",
+          `  DEDUCTION: Confirmed primary command-and-control server operated by '${syndicate}'.`
+        ];
+
         setHistory(prev => [
           ...prev,
-          { type: "system", text: "[*] Initiating deep packet trace to 10.5.22.1..." },
-          { type: "system", text: "    Hop 1: 192.168.1.1 [Internal Gateway] (0.4ms)" },
-          { type: "system", text: "    Hop 2: 172.16.4.254 [Defense Perimeter Firewall] (1.1ms)" },
-          { type: "system", text: "    Hop 3: 185.220.101.4 [Anonymizing Relay / Tor Node] (24.8ms)" },
-          { type: "warning", text: "    Hop 4: 10.5.22.1 [DESTINATION - OFFSHORE HOSTING]" },
-          { type: "intel", text: "=== WHOIS INTELLIGENCE REPORT ===" },
-          { type: "system", text: "  Host Name: relay-04.silent-hand.net" },
-          { type: "system", text: "  ASN: AS9498 (DarkNet Transit Group)" },
-          { type: "system", text: "  Country: Panama [Offshore Bulletproof Hosting]" },
-          { type: "system", text: "  Open Ports: 22 (SSH), 443 (HTTPS), 8080 (Encrypted Proxy)" },
-          { type: "error", text: "  THREAT LEVEL: CRITICAL" },
-          { type: "success", text: "  DEDUCTION: Confirmed primary command-and-control server operated by 'The Silent Hand'." }
+          ...customLines.map((line: string, idx: number) => ({
+            type: idx === customLines.length - 1 ? ("success" as const) : line.includes("===") ? ("intel" as const) : line.includes("CRITICAL") ? ("error" as const) : line.includes("Hop 4") ? ("warning" as const) : ("system" as const),
+            text: line
+          }))
         ]);
-        onTraceComplete?.("10.5.22.1");
+        onTraceComplete?.(targetIp);
         setIsProcessing(false);
         return;
       }
 
-      if (lower.includes("192.168.1.104")) {
+      // Check for internal IP scan (supports dynamic generated case internalIp and fallback 192.168.1.104)
+      if (lower.includes(internalIp.toLowerCase()) || lower.includes("192.168.1.104")) {
         setHistory(prev => [
           ...prev,
-          { type: "system", text: "[*] Scanning internal subnet address 192.168.1.104..." },
-          { type: "system", text: "  Device: SEC4-WORKSTATION-09" },
-          { type: "system", text: "  Subnet: Section 4 Government Internal Intranet" },
-          { type: "system", text: "  Active Session: Operative-9 (Stolen Token)" },
-          { type: "warning", text: "  Audit Event: 14:02:11 POST /api/v1/auth HTTP/1.1 (200 OK)" },
-          { type: "success", text: "  DEDUCTION: Internal terminal compromised via stolen admin authentication token." }
+          { type: "system", text: `[*] Scanning internal subnet address ${internalIp}...` },
+          { type: "system", text: `  Device: SEC4-WORKSTATION-09 [Subnet: Intranet Gateway]` },
+          { type: "system", text: `  Active Compromise Vector: Token hijacked by suspect handle '${suspectHandle}'` },
+          { type: "warning", text: `  Audit Event: 14:02:11 POST /api/v1/auth (Unauthorized administrative token bypass)` },
+          { type: "success", text: `  DEDUCTION: Internal terminal compromised. Payloads routed to external C2 proxy ${targetIp}.` }
         ]);
-        onTraceComplete?.("192.168.1.104");
+        onTraceComplete?.(internalIp);
         setIsProcessing(false);
         return;
       }
 
-      if (lower.includes("silent hand") || lower.includes("syndicate")) {
+      // Check for domain whois query
+      if (lower.includes(domain.toLowerCase()) || lower.includes("silent-hand.net")) {
         setHistory(prev => [
           ...prev,
-          { type: "intel", text: "=== DOSSIER: THE SILENT HAND ===" },
-          { type: "system", text: "  Classification: Transnational Cyber-Espionage Collective" },
-          { type: "system", text: "  Target: Defense Protocols & Cryptographic Keyrings" },
-          { type: "system", text: "  Intercepted Comms: 'Meet at extraction point at 22:00. Bring crypto drive.'" },
-          { type: "warning", text: "  Physical Rendezvous: Abandoned Industrial Warehouse, Harbor Basin." },
-          { type: "success", text: "  STATUS: Ready to finalize dossier for Case Report." }
+          { type: "intel", text: `=== WHOIS REGISTRY: ${domain} ===` },
+          { type: "system", text: `  Primary Nameserver: ns1.${domain}` },
+          { type: "system", text: `  Origin C2 Gateway: ${targetIp}` },
+          { type: "system", text: `  Registrar: Off-shore Privacy Guardian Inc.` },
+          { type: "warning", text: `  Attribution: ${syndicate}` },
+          { type: "success", text: `  STATUS: Verified hostile command-and-control domain for ${syndicate}.` }
         ]);
-        onTraceComplete?.("silent-hand");
+        onTraceComplete?.(domain);
         setIsProcessing(false);
         return;
       }
 
-      if (lower.includes("warehouse") || lower.includes("extraction") || lower.includes("location") || lower.includes("rendezvous")) {
+      // Check for syndicate dossier
+      if (lower.includes(syndicate.toLowerCase()) || lower.includes("silent hand") || lower.includes("syndicate")) {
+        setHistory(prev => [
+          ...prev,
+          { type: "intel", text: `=== CLASSIFIED DOSSIER: ${syndicate.toUpperCase()} ===` },
+          { type: "system", text: `  Classification: Transnational Cyber-Espionage Collective` },
+          { type: "system", text: `  Primary Proxy: ${targetIp} (${domain})` },
+          { type: "system", text: `  Suspect Infiltrator: ${suspectHandle}` },
+          { type: "warning", text: `  Intercepted Comms: 'Meet at extraction point at 22:00. Bring crypto drive.'` },
+          { type: "system", text: `  Physical Rendezvous: ${locationName} [Coords: ${coords}]` },
+          { type: "success", text: `  STATUS: Ready to finalize intelligence dossier for Case Report.` }
+        ]);
+        onTraceComplete?.(syndicate);
+        setIsProcessing(false);
+        return;
+      }
+
+      // Check for location or rendezvous match
+      if (
+        lower.includes("warehouse") || 
+        lower.includes("extraction") || 
+        lower.includes("location") || 
+        lower.includes("rendezvous") ||
+        lower.includes("pier") ||
+        lower.includes(locationName.toLowerCase().split(" ")[0])
+      ) {
         setHistory(prev => [
           ...prev,
           { type: "intel", text: "=== SATELLITE & SURVEILLANCE MATCH ===" },
-          { type: "system", text: "  Coordinates: 37°48'14.2\"N 122°16'44.8\"W" },
-          { type: "system", text: "  Location: Pier 42 Abandoned Industrial Cargo Facility" },
-          { type: "system", text: "  Scheduled Time: 22:00 UTC (Today)" },
-          { type: "success", text: "  Target Operative-9 confirmed en route with encrypted hardware drive." }
+          { type: "system", text: `  Coordinates: ${coords}` },
+          { type: "system", text: `  Facility: ${locationName}` },
+          { type: "system", text: `  Scheduled Handover: 22:00 UTC (Today)` },
+          { type: "success", text: `  Target Operative '${suspectHandle}' confirmed en route with encrypted hardware payload.` }
         ]);
-        onTraceComplete?.("warehouse");
+        onTraceComplete?.("rendezvous");
         setIsProcessing(false);
         return;
       }
@@ -172,7 +230,7 @@ export default function OSINTTerminal({ onTraceComplete }: OSINTTerminalProps) {
       setHistory(prev => [
         ...prev,
         { type: "system", text: `[*] Querying global intelligence relays for '${query}'...` },
-        { type: "warning", text: "No direct match. Type 'help' for command syntax." }
+        { type: "warning", text: `No direct match. Type 'help' or try 'trace ${targetIp}', 'whois ${domain}', 'scan ${internalIp}'.` }
       ]);
       setIsProcessing(false);
     }, 400);
@@ -194,6 +252,10 @@ export default function OSINTTerminal({ onTraceComplete }: OSINTTerminalProps) {
           </span>
         </div>
         <div className="flex items-center gap-2.5">
+          <div className="hidden md:flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-950/40 border border-emerald-500/30 text-[10px] text-emerald-400 font-mono">
+            <ShieldCheck className="w-3 h-3 text-emerald-400" />
+            <span>INPUT SANITIZED</span>
+          </div>
           <span className="text-[10px] text-green-500/60 uppercase hidden sm:inline">
             STATUS: <span className="text-green-400 font-bold animate-pulse">CONNECTED</span>
           </span>

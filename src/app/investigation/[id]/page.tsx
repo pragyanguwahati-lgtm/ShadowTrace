@@ -4,11 +4,13 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Search, FolderOpen, Maximize2, X, Terminal, Clock, HelpCircle, ShieldAlert, CheckCircle2, ChevronRight, Trophy, ArrowRight, Award, ShieldCheck, Zap, RotateCcw } from "lucide-react";
-import { thePhantomProtocolCase, phantomProtocolClues, theOperationMidnightCase, operationMidnightClues } from "@/lib/data/seed-case";
+import { Search, FolderOpen, Maximize2, X, Terminal, Clock, HelpCircle, ShieldAlert, CheckCircle2, ChevronRight, Trophy, ArrowRight, Award, ShieldCheck, Zap, RotateCcw, Lightbulb } from "lucide-react";
 import { Clue } from "@/lib/firebase/schema";
-import AIPanel from "@/components/AIPanel";
+import TacticalHintsPanel from "@/components/TacticalHintsPanel";
 import OSINTTerminal from "@/components/OSINTTerminal";
+import { getCaseById, getCluesForCase, markCaseSolved, getCompletedCaseIds } from "@/lib/engine/case-store";
+import { getScopedStorageKey } from "@/lib/auth/user-store";
+import { DynamicCase } from "@/lib/engine/procedural-generator";
 
 function InvestigationContent() {
   const params = useParams();
@@ -23,35 +25,26 @@ function InvestigationContent() {
   const [osintTraced, setOsintTraced] = useState<boolean>(false);
   const [showVictoryModal, setShowVictoryModal] = useState<boolean>(false);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [pendingTerminalQuery, setPendingTerminalQuery] = useState<string>("");
 
-  // Dynamic case resolution based on route ID
-  const isOperationMidnight = caseId === "operation-midnight" || caseId === "locked-1";
-  const investigationCase = isOperationMidnight ? theOperationMidnightCase : thePhantomProtocolCase;
-  const clues = isOperationMidnight ? operationMidnightClues : phantomProtocolClues;
+  // Procedural dynamic case resolution
+  const [investigationCase, setInvestigationCase] = useState<DynamicCase>(() => getCaseById(caseId));
+  const [clues, setClues] = useState<Clue[]>(() => getCluesForCase(caseId));
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const stored = JSON.parse(localStorage.getItem("shadowtrace_completed") || "[]");
-      if (stored.includes(investigationCase.id)) {
-        setIsCompleted(true);
-      }
+    const loadedCase = getCaseById(caseId);
+    const loadedClues = getCluesForCase(caseId);
+    setInvestigationCase(loadedCase);
+    setClues(loadedClues);
+    const completed = getCompletedCaseIds();
+    if (completed.includes(loadedCase.id)) {
+      setIsCompleted(true);
     }
-  }, [investigationCase.id]);
+  }, [caseId]);
 
   const triggerCompletion = () => {
     setIsCompleted(true);
-    if (typeof window !== "undefined") {
-      const nextLevel = isOperationMidnight ? "6" : "5";
-      const nextRank = isOperationMidnight ? "Master Cyber Director" : "Senior Cyber Investigator";
-      localStorage.setItem("shadowtrace_level", nextLevel);
-      localStorage.setItem("shadowtrace_rank", nextRank);
-      const completed = JSON.parse(localStorage.getItem("shadowtrace_completed") || "[]");
-      if (!completed.includes(investigationCase.id)) {
-        completed.push(investigationCase.id);
-        localStorage.setItem("shadowtrace_completed", JSON.stringify(completed));
-      }
-      window.dispatchEvent(new Event("shadowtrace-progression-updated"));
-    }
+    markCaseSolved(investigationCase.id);
     setTimeout(() => {
       setShowVictoryModal(true);
     }, 400);
@@ -63,14 +56,11 @@ function InvestigationContent() {
     setIsCompleted(false);
     setShowVictoryModal(false);
     if (typeof window !== "undefined") {
-      const completed = JSON.parse(localStorage.getItem("shadowtrace_completed") || "[]");
-      const filtered = completed.filter((id: string) => id !== investigationCase.id);
-      localStorage.setItem("shadowtrace_completed", JSON.stringify(filtered));
-      if (filtered.length === 0) {
-        localStorage.setItem("shadowtrace_level", "4");
-        localStorage.setItem("shadowtrace_rank", "Cyber Investigator");
-      }
+      const key = getScopedStorageKey("completed_ids");
+      const completed = getCompletedCaseIds().filter((id: string) => id !== investigationCase.id);
+      localStorage.setItem(key, JSON.stringify(completed));
       window.dispatchEvent(new Event("shadowtrace-progression-updated"));
+      window.dispatchEvent(new Event("shadowtrace-cases-updated"));
     }
   };
 
@@ -284,7 +274,11 @@ function InvestigationContent() {
           )}
           
           {activeTab === "terminal" && (
-            <OSINTTerminal onTraceComplete={handleTraceComplete} />
+            <OSINTTerminal 
+              onTraceComplete={handleTraceComplete}
+              terminalIntel={investigationCase.terminalIntel}
+              externalQuery={pendingTerminalQuery}
+            />
           )}
 
           {activeTab === "timeline" && (
@@ -313,17 +307,16 @@ function InvestigationContent() {
           )}
         </div>
 
-        {/* Right Area (AI Panel Placeholder) */}
-        <div className="w-[400px] border border-border/50 bg-surface/30 rounded-xl flex flex-col backdrop-blur-md overflow-hidden">
-          <div className="p-4 border-b border-border/50 bg-background/50 flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-widest flex items-center gap-2">
-              <Search className="w-4 h-4 text-accent" />
-              AI Assistant
-            </h2>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <AIPanel caseDetails={investigationCase} cluesFound={clues} />
-          </div>
+        {/* Right Area (Tactical Progressive Hints) */}
+        <div className="w-[380px] lg:w-[420px] flex flex-col h-full shrink-0">
+          <TacticalHintsPanel 
+            caseDetails={investigationCase} 
+            cluesFound={reviewedClues.map(id => clues.find(c => c.id === id)).filter(Boolean) as Clue[]}
+            onOpenTerminalQuery={(cmd) => {
+              setActiveTab("terminal");
+              setPendingTerminalQuery(cmd);
+            }}
+          />
         </div>
       </div>
 
@@ -413,13 +406,13 @@ function InvestigationContent() {
                   <div className="flex items-start gap-2.5">
                     <span className="w-5 h-5 rounded-full bg-surface border border-accent/40 text-accent flex items-center justify-center shrink-0 font-bold">2</span>
                     <div>
-                      <strong className="text-text">Correlate Anomalies:</strong> In <span className="text-accent">Server Access Logs</span>, identify rogue IP <code className="bg-surface px-1 py-0.5 rounded text-accent">10.5.22.1</code> and its connection to the syndicate <span className="text-text font-bold">&quot;The Silent Hand&quot;</span>.
+                      <strong className="text-text">Correlate Anomalies:</strong> In <span className="text-accent">Server Access Logs</span>, identify rogue IP <code className="bg-surface px-1 py-0.5 rounded text-accent">{investigationCase.terminalIntel?.targetIp || "10.5.22.1"}</code> and its connection to the syndicate <span className="text-text font-bold">&quot;{investigationCase.terminalIntel?.syndicateName || "The Silent Hand"}&quot;</span>.
                     </div>
                   </div>
                   <div className="flex items-start gap-2.5">
                     <span className="w-5 h-5 rounded-full bg-surface border border-accent/40 text-accent flex items-center justify-center shrink-0 font-bold">3</span>
                     <div>
-                      <strong className="text-text">Interrogate ShadowTrace AI:</strong> Use the tactical assistant on the right panel. Click the starter chips or type custom queries to verify deductions without spoilers.
+                      <strong className="text-text">Tactical Progressive Hints:</strong> Use the field guidance panel on the right. Unlock sequential hints and instructions as you progress to verify deductions without spoilers.
                     </div>
                   </div>
                   <div className="flex items-start gap-2.5">
@@ -495,12 +488,12 @@ function InvestigationContent() {
                       Clearance Accreditation Upgrade
                     </span>
                     <div className="text-xl md:text-2xl font-display font-bold text-white mt-0.5 flex items-center gap-2">
-                      <span className="text-text/40 line-through">LEVEL 4</span>
+                      <span className="text-text/40 line-through">PREVIOUS</span>
                       <ArrowRight className="w-4 h-4 text-accent" />
-                      <span className="text-accent">{isOperationMidnight ? "LEVEL 6" : "LEVEL 5"} OPERATIVE</span>
+                      <span className="text-accent">CLEARED OPERATIVE</span>
                     </div>
                     <span className="text-xs font-mono text-text/70">
-                      Rank: {isOperationMidnight ? "Master Cyber Director" : "Senior Cyber Investigator"} • Next Mission Dossier Unlocked
+                      Case Dossier Closed • Next Mission Protocol Unlocked
                     </span>
                   </div>
                   <div className="shrink-0 flex items-center justify-center w-14 h-14 rounded-full bg-accent/20 border border-accent text-accent shadow-[0_0_20px_rgba(200,255,0,0.3)]">
@@ -515,15 +508,15 @@ function InvestigationContent() {
                   </div>
                   <div className="flex items-start gap-2 text-text/90">
                     <span className="text-emerald-400 font-bold shrink-0">[✓]</span>
-                    <span>Correlated breach token to rogue internal workstation (192.168.1.104).</span>
+                    <span>Correlated breach token to internal workstation ({investigationCase.terminalIntel?.internalIp || "192.168.1.104"}).</span>
                   </div>
                   <div className="flex items-start gap-2 text-text/90">
                     <span className="text-emerald-400 font-bold shrink-0">[✓]</span>
-                    <span>Traced C2 command relay to offshore bulletproof host (10.5.22.1).</span>
+                    <span>Traced C2 command relay to offshore host ({investigationCase.terminalIntel?.targetIp || "10.5.22.1"}) operated by {investigationCase.terminalIntel?.syndicateName || "The Silent Hand"}.</span>
                   </div>
                   <div className="flex items-start gap-2 text-text/90">
                     <span className="text-emerald-400 font-bold shrink-0">[✓]</span>
-                    <span>Discovered physical rendezvous and rendezvous time (Pier 42, 22:00 UTC).</span>
+                    <span>Discovered physical rendezvous at {investigationCase.terminalIntel?.locationName || "Pier 42"} [{investigationCase.terminalIntel?.coordinates || "37°48'N"}].</span>
                   </div>
                 </div>
 

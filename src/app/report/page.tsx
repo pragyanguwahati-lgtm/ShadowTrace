@@ -6,7 +6,15 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import { ReportPDF } from "@/components/ReportPDF";
-import { thePhantomProtocolCase, phantomProtocolClues, theOperationMidnightCase, operationMidnightClues } from "@/lib/data/seed-case";
+import { 
+  getCaseById, 
+  getCluesForCase, 
+  getCompletedCaseIds, 
+  markCaseSolved,
+  getCaseHistory 
+} from "@/lib/engine/case-store";
+import { getActiveUser, OperativeAccount } from "@/lib/auth/user-store";
+import { DynamicCase } from "@/lib/engine/procedural-generator";
 import { Download, ArrowRight, ShieldCheck, Trophy, Award, CheckCircle2, FileText, ChevronRight } from "lucide-react";
 
 function ReportContent() {
@@ -14,40 +22,46 @@ function ReportContent() {
   const [completedCases, setCompletedCases] = useState<string[]>([]);
   const [clearanceLevel, setClearanceLevel] = useState<string>("4");
   const [operativeRank, setOperativeRank] = useState<string>("Cyber Investigator");
+  const [activeUser, setActiveUser] = useState<OperativeAccount | null>(null);
   const searchParams = useSearchParams();
   const justSolvedId = searchParams.get("solved");
 
+  const loadData = () => {
+    if (typeof window !== "undefined") {
+      const user = getActiveUser();
+      setActiveUser(user);
+      if (user) {
+        setClearanceLevel(user.clearanceLevel || "4");
+        setOperativeRank(user.operativeRank || "Cyber Investigator");
+      } else {
+        setClearanceLevel(localStorage.getItem("shadowtrace_level") || "4");
+        setOperativeRank(localStorage.getItem("shadowtrace_rank") || "Cyber Investigator");
+      }
+
+      const storedCompleted = getCompletedCaseIds();
+      if (justSolvedId && !storedCompleted.includes(justSolvedId)) {
+        markCaseSolved(justSolvedId);
+      }
+      setCompletedCases(getCompletedCaseIds());
+    }
+  };
+
   useEffect(() => {
     setIsClient(true);
-    if (typeof window !== "undefined") {
-      const storedCompleted = JSON.parse(localStorage.getItem("shadowtrace_completed") || "[]");
-      const storedLevel = localStorage.getItem("shadowtrace_level") || "4";
-      const storedRank = localStorage.getItem("shadowtrace_rank") || "Cyber Investigator";
-
-      // If arrived via ?solved query, ensure it is recorded in completed cases
-      if (justSolvedId && !storedCompleted.includes(justSolvedId)) {
-        storedCompleted.push(justSolvedId);
-        localStorage.setItem("shadowtrace_completed", JSON.stringify(storedCompleted));
-        const updatedLevel = justSolvedId === "operation-midnight" ? "6" : "5";
-        const updatedRank = justSolvedId === "operation-midnight" ? "Master Cyber Director" : "Senior Cyber Investigator";
-        localStorage.setItem("shadowtrace_level", updatedLevel);
-        localStorage.setItem("shadowtrace_rank", updatedRank);
-        setClearanceLevel(updatedLevel);
-        setOperativeRank(updatedRank);
-        window.dispatchEvent(new Event("shadowtrace-progression-updated"));
-      } else {
-        setClearanceLevel(storedLevel);
-        setOperativeRank(storedRank);
-      }
-      setCompletedCases(storedCompleted);
-    }
+    loadData();
+    window.addEventListener("shadowtrace-progression-updated", loadData);
+    window.addEventListener("shadowtrace-auth-updated", loadData);
+    return () => {
+      window.removeEventListener("shadowtrace-progression-updated", loadData);
+      window.removeEventListener("shadowtrace-auth-updated", loadData);
+    };
   }, [justSolvedId]);
 
-  const hasSolvedPhantom = completedCases.includes("phantom-protocol") || justSolvedId === "phantom-protocol";
-  const hasSolvedMidnight = completedCases.includes("operation-midnight") || justSolvedId === "operation-midnight";
+  // Generate resolved dossiers
+  const displayCaseIds = completedCases.length > 0 ? completedCases : ["phantom-protocol"];
 
   return (
-    <div className="flex flex-col max-w-5xl mx-auto w-full pb-16">
+    <div className="flex flex-col max-w-5xl mx-auto w-full px-4 sm:px-6 pb-16">
       {/* Page Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -84,16 +98,21 @@ function ReportContent() {
                 OPERATIVE STATUS CONFIRMED
               </span>
             </div>
-            <div className="flex items-baseline gap-3">
+            <div className="flex flex-wrap items-baseline gap-3">
               <h2 className="text-2xl md:text-4xl font-display font-bold text-white tracking-tight">
                 CLEARANCE LEVEL {clearanceLevel}
               </h2>
               <span className="text-xs font-mono text-accent bg-accent/20 border border-accent/30 px-2.5 py-0.5 rounded-full font-semibold">
                 {operativeRank}
               </span>
+              {activeUser && (
+                <span className="text-xs font-mono text-cyan-300 bg-cyan-950/40 border border-cyan-400/30 px-2.5 py-0.5 rounded-full font-bold">
+                  {activeUser.username}
+                </span>
+              )}
             </div>
             <p className="text-text/70 text-xs md:text-sm font-mono mt-2">
-              Cases Solved: {completedCases.length} | Authorization: {hasSolvedPhantom ? "Unlocked Level 5 Missions (Operation Midnight Ready)" : "Active on Flagship Assignment"}
+              Cases Solved: {completedCases.length} | Authorization: {completedCases.length > 0 ? "Verified Operations Debrief Clearance" : "Standard Directive Clearance"}
             </p>
           </div>
 
@@ -102,7 +121,7 @@ function ReportContent() {
               href="/cases"
               className="px-5 py-3 rounded-full bg-accent text-background font-mono text-xs font-bold uppercase tracking-wider hover:bg-accent/80 transition-all flex items-center justify-center gap-2 shadow-lg shadow-accent/20"
             >
-              <span>{hasSolvedPhantom ? "Launch Operation Midnight" : "Return to Case Dossiers"}</span>
+              <span>Explore Operation Dossiers</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -112,128 +131,77 @@ function ReportContent() {
       {/* Dossier Cards Grid */}
       <div className="space-y-6">
         <h3 className="text-xs font-mono uppercase tracking-widest text-text/50">
-          Available Intelligence Dossiers ({completedCases.length > 0 ? "Verified" : "Pending"})
+          Available Intelligence Dossiers ({completedCases.length > 0 ? `${completedCases.length} Solved` : "Pending"})
         </h3>
 
-        {/* Case 1: The Phantom Protocol */}
-        <div className={`border rounded-xl p-6 md:p-8 backdrop-blur-md transition-all ${
-          hasSolvedPhantom 
-            ? "border-emerald-500/40 bg-surface/40 hover:border-emerald-500/70" 
-            : "border-border/40 bg-surface/20"
-        }`}>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <span className={`text-[10px] uppercase font-mono tracking-widest px-2.5 py-0.5 rounded font-bold ${
-                  hasSolvedPhantom
-                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                    : "bg-accent/10 text-accent border border-accent/30"
-                }`}>
-                  {hasSolvedPhantom ? "Case Solved // Verified" : "Dossier In Progress"}
-                </span>
-                <span className="text-xs font-mono text-text/40">Difficulty: Medium</span>
-              </div>
-              <h2 className="font-display text-2xl md:text-3xl mb-2 text-white">{thePhantomProtocolCase.title}</h2>
-              <p className="text-text/70 text-sm max-w-xl font-light leading-relaxed">
-                Breach identified at Section 4 primary defense layer. IP 10.5.22.1 traced to &apos;The Silent Hand&apos; C2 server. Physical exchange at Pier 42 warehouse mapped.
-              </p>
-            </div>
+        {displayCaseIds.map((cId) => {
+          const caseData = getCaseById(cId);
+          const clueList = getCluesForCase(cId);
+          const isSolved = completedCases.includes(caseData.id);
 
-            <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
-              {isClient ? (
-                <PDFDownloadLink 
-                  document={<ReportPDF investigationCase={thePhantomProtocolCase} clues={phantomProtocolClues} />} 
-                  fileName={`dossier-${thePhantomProtocolCase.id}.pdf`}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-500 text-black px-6 py-3 rounded-full hover:bg-emerald-400 transition-colors font-mono font-bold text-xs tracking-wider uppercase shadow-lg shadow-emerald-500/10"
-                >
-                  {({ loading }) => (
-                    <>
-                      <Download className="w-4 h-4" />
-                      {loading ? "Compiling PDF..." : "Download Dossier PDF"}
-                    </>
-                  )}
-                </PDFDownloadLink>
-              ) : (
-                <button className="flex items-center gap-2 bg-surface text-text/50 px-6 py-3 rounded-full font-mono text-xs tracking-wide uppercase border border-border" disabled>
-                  <Download className="w-4 h-4" />
-                  Loading PDF Engine...
-                </button>
-              )}
-
-              <Link
-                href="/investigation/phantom-protocol"
-                className="w-full sm:w-auto px-4 py-3 rounded-full border border-border/80 text-text/70 hover:text-white hover:border-text/60 font-mono text-xs uppercase tracking-wider text-center transition-colors"
-              >
-                Revisit Console
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Case 2: Operation Midnight */}
-        <div className={`border rounded-xl p-6 md:p-8 backdrop-blur-md transition-all ${
-          hasSolvedMidnight
-            ? "border-emerald-500/40 bg-surface/40"
-            : hasSolvedPhantom
-              ? "border-accent/40 bg-accent/5 hover:border-accent/70"
-              : "border-border/30 bg-surface/10 opacity-60"
-        }`}>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <span className={`text-[10px] uppercase font-mono tracking-widest px-2.5 py-0.5 rounded font-bold ${
-                  hasSolvedMidnight
-                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                    : hasSolvedPhantom
-                      ? "bg-accent/20 text-accent border border-accent/40"
-                      : "bg-surface text-text/40 border border-border"
-                }`}>
-                  {hasSolvedMidnight 
-                    ? "Case Solved // Master Verified" 
-                    : hasSolvedPhantom 
-                      ? "Level 5 Mission Unlocked" 
-                      : "Clearance Level 5 Required"}
-                </span>
-                <span className="text-xs font-mono text-text/40">Difficulty: Hard</span>
-              </div>
-              <h2 className="font-display text-2xl md:text-3xl mb-2 text-white">{theOperationMidnightCase.title}</h2>
-              <p className="text-text/70 text-sm max-w-xl font-light leading-relaxed">
-                Rogue high-frequency telemetry burst intercepted across military satellite transponders. Track orbital trajectory and decrypt ground terminal uplink.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
-              {hasSolvedPhantom ? (
-                isClient && hasSolvedMidnight ? (
-                  <PDFDownloadLink 
-                    document={<ReportPDF investigationCase={theOperationMidnightCase} clues={operationMidnightClues} />} 
-                    fileName={`dossier-${theOperationMidnightCase.id}.pdf`}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-500 text-black px-6 py-3 rounded-full hover:bg-emerald-400 transition-colors font-mono font-bold text-xs tracking-wider uppercase shadow-lg shadow-emerald-500/10"
-                  >
-                    {({ loading }) => (
-                      <>
-                        <Download className="w-4 h-4" />
-                        {loading ? "Compiling PDF..." : "Download Dossier PDF"}
-                      </>
-                    )}
-                  </PDFDownloadLink>
-                ) : (
-                  <Link
-                    href="/investigation/operation-midnight"
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-accent text-background px-6 py-3 rounded-full hover:bg-accent/80 transition-colors font-mono font-bold text-xs tracking-wider uppercase shadow-lg shadow-accent/20"
-                  >
-                    <span>Launch Investigation</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                )
-              ) : (
-                <div className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-border/50 text-text/40 font-mono text-xs">
-                  <span>Solve Phantom Protocol to Unlock</span>
+          return (
+            <div 
+              key={caseData.id}
+              className={`border rounded-xl p-6 md:p-8 backdrop-blur-md transition-all ${
+                isSolved 
+                  ? "border-emerald-500/40 bg-surface/40 hover:border-emerald-500/70" 
+                  : "border-border/40 bg-surface/20"
+              }`}
+            >
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className={`text-[10px] uppercase font-mono tracking-widest px-2.5 py-0.5 rounded font-bold ${
+                      isSolved
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                        : "bg-accent/10 text-accent border border-accent/30"
+                    }`}>
+                      {isSolved ? "Case Solved // Verified" : "Dossier In Progress"}
+                    </span>
+                    <span className="text-xs font-mono text-text/40">Difficulty: {caseData.difficulty}</span>
+                    <span className="text-xs font-mono text-text/40">Operation: {caseData.operationName || "Syndicate"}</span>
+                  </div>
+                  <h2 className="font-display text-2xl md:text-3xl mb-2 text-white">{caseData.title}</h2>
+                  <p className="text-text/70 text-sm max-w-xl font-light leading-relaxed">
+                    {caseData.description}
+                  </p>
                 </div>
-              )}
+
+                <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
+                  {isClient && isSolved ? (
+                    <PDFDownloadLink 
+                      document={<ReportPDF investigationCase={caseData} clues={clueList} />} 
+                      fileName={`dossier-${caseData.id}.pdf`}
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-500 text-black px-6 py-3 rounded-full hover:bg-emerald-400 transition-colors font-mono font-bold text-xs tracking-wider uppercase shadow-lg shadow-emerald-500/10 cursor-pointer"
+                    >
+                      {({ loading }) => (
+                        <>
+                          <Download className="w-4 h-4" />
+                          {loading ? "Compiling PDF..." : "Download Dossier PDF"}
+                        </>
+                      )}
+                    </PDFDownloadLink>
+                  ) : (
+                    <Link
+                      href={`/investigation/${caseData.id}`}
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-accent text-background px-6 py-3 rounded-full hover:bg-accent/80 transition-colors font-mono font-bold text-xs tracking-wider uppercase shadow-lg shadow-accent/20"
+                    >
+                      <span>Investigate Case</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  )}
+
+                  <Link
+                    href={`/investigation/${caseData.id}`}
+                    className="w-full sm:w-auto px-4 py-3 rounded-full border border-border/80 text-text/70 hover:text-white hover:border-text/60 font-mono text-xs uppercase tracking-wider text-center transition-colors"
+                  >
+                    Revisit Console
+                  </Link>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
     </div>
   );

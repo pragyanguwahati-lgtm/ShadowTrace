@@ -1,385 +1,661 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { 
   ArrowRight, 
-  Terminal, 
-  Globe, 
-  ShieldAlert, 
-  Fingerprint, 
-  Activity, 
-  Cpu, 
-  Lock, 
-  CheckCircle2, 
-  Shield, 
   Radio, 
-  ChevronDown 
+  Shield, 
+  Terminal, 
+  Compass, 
+  Binary, 
+  Lock, 
+  ChevronRight,
+  Eye,
+  Activity,
+  Layers,
+  Sparkles
 } from "lucide-react";
+import TacticalShaderBackground from "@/components/TacticalShaderBackground";
+import OSINTPracticeSandbox from "@/components/OSINTPracticeSandbox";
 
-gsap.registerPlugin(ScrollTrigger);
+type EvidenceKey = "adsb" | "audio" | "photo" | "registry";
 
 export default function Home() {
-  const pinWrapperRef = useRef<HTMLDivElement>(null);
-  const heroContentRef = useRef<HTMLDivElement>(null);
-  const titleLine1Ref = useRef<HTMLDivElement>(null);
-  const titleLine2Ref = useRef<HTMLDivElement>(null);
-  const descRef = useRef<HTMLParagraphElement>(null);
-  const ctaButtonRef = useRef<HTMLAnchorElement>(null);
-  const scrollIndicatorRef = useRef<HTMLDivElement>(null);
-  const dossierCardRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      // 1. Initial Page Load Entrance Animation (Drift & Dissolve)
-      const loadTl = gsap.timeline();
-
-      loadTl
-        .fromTo(
-          titleLine1Ref.current,
-          { opacity: 0, y: 40 },
-          { opacity: 1, y: 0, duration: 1.1, ease: "power3.out", delay: 0.1 }
-        )
-        .fromTo(
-          titleLine2Ref.current,
-          { opacity: 0, y: 40 },
-          { opacity: 1, y: 0, duration: 1.1, ease: "power3.out" },
-          "-=0.8"
-        )
-        .fromTo(
-          descRef.current,
-          { opacity: 0, y: 25 },
-          { opacity: 1, y: 0, duration: 1.0, ease: "power3.out" },
-          "-=0.7"
-        )
-        .fromTo(
-          ctaButtonRef.current,
-          { opacity: 0, y: 20 },
-          { opacity: 1, y: 0, duration: 1.0, ease: "power3.out" },
-          "-=0.7"
-        )
-        .fromTo(
-          scrollIndicatorRef.current,
-          { opacity: 0 },
-          { opacity: 1, duration: 0.8, ease: "power2.out" },
-          "-=0.4"
-        );
-
-      // 2. Cinematic Scroll-Bound 3D Dossier Transition (Apple-Style Pinned Sequence)
-      // Initial state of the procedural dossier card before scrolling
-      gsap.set(dossierCardRef.current, {
-        opacity: 0,
-        scale: 0.75,
-        rotationX: 25,
-        y: 120,
-        transformPerspective: 1200,
-        transformOrigin: "center top",
-      });
-
-      const scrollTl = gsap.timeline({
-        scrollTrigger: {
-          trigger: pinWrapperRef.current,
-          start: "top top",
-          end: "+=2200",
-          pin: true,
-          scrub: 1.2,
-          anticipatePin: 1,
-        },
-      });
-
-      // Step A: Hero text and CTA scale down slightly, fade out, and drift upward
-      scrollTl
-        .to(heroContentRef.current, {
-          y: -90,
-          opacity: 0,
-          scale: 0.88,
-          ease: "power2.inOut",
-          duration: 1.6,
-        }, 0)
-        .to(scrollIndicatorRef.current, {
-          opacity: 0,
-          duration: 0.6,
-          ease: "power2.inOut",
-        }, 0)
-
-        // Step B: Procedural 3D Dossier smoothly ascends into center view
-        .to(dossierCardRef.current, {
-          opacity: 1,
-          scale: 1,
-          rotationX: 0,
-          y: 0,
-          ease: "power2.out",
-          duration: 2.4,
-        }, 0.5)
-
-        // Step C: Subtle settle glow & focus
-        .to(dossierCardRef.current, {
-          boxShadow: "0 0 90px rgba(16, 185, 129, 0.22), 0 25px 60px rgba(0, 0, 0, 0.9)",
-          duration: 1.0,
-          ease: "none",
-        }, 2.0);
-
-    }, pinWrapperRef);
-
-    return () => ctx.revert();
-  }, []);
+  const [selectedEvidence, setSelectedEvidence] = useState<EvidenceKey>("adsb");
 
   return (
-    <div className="relative w-full bg-background text-text select-none overflow-x-hidden">
-      {/* Ambient background glow layers */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-accent/5 rounded-full blur-[140px]" />
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-emerald-500/5 rounded-full blur-[160px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(9,9,9,0.7)_100%)]" />
-      </div>
+    <div className="relative w-full text-text overflow-x-hidden min-h-screen">
+      {/* 1. Exact Living WebGL Background Shader from HTML Mockup */}
+      <TacticalShaderBackground />
 
-      {/* Main Full-Screen Pinned Section */}
-      <section 
-        ref={pinWrapperRef} 
-        className="h-screen w-full relative flex items-center justify-center overflow-hidden z-10 [perspective:1200px]"
-      >
+      {/* Main Content Container */}
+      <div className="max-w-[1160px] mx-auto px-4 sm:px-6 w-full pt-6 pb-24 relative z-10">
+        
         {/* ========================================================= */}
-        {/* 1. INITIAL STATE: Centered Hero Text & CTA Button          */}
+        {/* HERO SECTION WITH PROMINENT SHADOWTRACE BRANDING           */}
         {/* ========================================================= */}
-        <div 
-          ref={heroContentRef} 
-          className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 pointer-events-auto z-20 max-w-5xl mx-auto"
-        >
-          <div className="flex items-center gap-2 mb-6 px-3.5 py-1 rounded-full border border-border/60 bg-surface/40 backdrop-blur-md text-[11px] font-mono uppercase tracking-widest text-accent">
-            <Radio className="w-3.5 h-3.5 text-accent animate-pulse" />
-            <span>Encrypted Simulation Console • Clearance Level 4</span>
-          </div>
-
-          <h1 className="font-display text-5xl sm:text-7xl md:text-8xl lg:text-9xl tracking-tighter leading-[0.9] mb-6">
-            <div ref={titleLine1Ref} className="opacity-0">Every clue</div>
-            <div ref={titleLine2Ref} className="opacity-0">
-              tells <span className="text-accent italic font-light">a story.</span>
-            </div>
-          </h1>
-
-          <p 
-            ref={descRef} 
-            className="opacity-0 mt-6 text-text/60 text-base sm:text-xl md:text-2xl max-w-2xl font-light tracking-wide leading-relaxed"
+        <header className="text-center pt-6 sm:pt-12 pb-12 sm:pb-16 flex flex-col items-center">
+          
+          {/* Animated Tactical Cyber Insignia */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="relative flex items-center justify-center w-24 h-24 sm:w-28 sm:h-28 mb-4 mx-auto select-none"
           >
-            Step into a cinematic cyber investigation simulator. Correlate network telemetry, intercept rogue transmissions, and reconstruct the breach.
+            {/* Ambient Multi-Hue Pulsing Glow */}
+            <div className="absolute inset-0 rounded-full bg-cyan-400/25 blur-2xl animate-pulse" />
+            <div className="absolute inset-0 rounded-full bg-amber-400/20 blur-xl" />
+            
+            {/* Rotating Outer Radar Telemetry Ring */}
+            <svg className="w-full h-full animate-[spin_16s_linear_infinite]" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="46" fill="none" stroke="#22e0ff" strokeWidth="1.2" strokeDasharray="6 4" strokeOpacity="0.6" />
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#ffb020" strokeWidth="1" strokeDasharray="2 3" strokeOpacity="0.4" />
+              <path d="M 50 2 L 50 10 M 50 90 L 50 98 M 2 50 L 10 50 M 90 50 L 98 50" stroke="#22e0ff" strokeWidth="1.5" />
+            </svg>
+
+            {/* Inner Counter-Rotating Target Reticle */}
+            <svg className="absolute w-16 h-16 animate-[spin_8s_linear_infinite_reverse]" viewBox="0 0 60 60">
+              <circle cx="30" cy="30" r="24" fill="none" stroke="#22e0ff" strokeWidth="1" strokeOpacity="0.4" />
+              <path d="M 30 6 L 30 14 M 30 46 L 30 54 M 6 30 L 14 30 M 46 30 L 54 30" stroke="#ffb020" strokeWidth="1.2" />
+            </svg>
+
+            {/* Center Core Emblem Badge */}
+            <div className="absolute w-12 h-12 rounded-xl bg-gradient-to-br from-[#102a35] via-[#0a0c11] to-[#251f10] border border-cyan-400/60 flex items-center justify-center shadow-[0_0_25px_rgba(34,224,255,0.7)] backdrop-blur-md">
+              <Radio className="w-6 h-6 text-cyan-300 animate-pulse" />
+            </div>
+          </motion.div>
+
+          {/* ======================================================= */}
+          {/* BIG SHADOWTRACE BRAND TITLE                             */}
+          {/* ======================================================= */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            className="flex flex-col items-center select-none"
+          >
+            <div className="font-mono font-black text-6xl sm:text-8xl md:text-9xl tracking-[0.08em] sm:tracking-[0.14em] uppercase bg-gradient-to-b from-white via-[#E6EAF2] to-[#8A93A6] bg-clip-text text-transparent drop-shadow-[0_0_45px_rgba(34,224,255,0.4)]">
+              SHADOWTRACE
+            </div>
+            
+            <div className="flex items-center gap-3 text-[10px] sm:text-xs font-mono uppercase tracking-[0.25em] text-cyan-300/80 -mt-1 sm:-mt-2 mb-6">
+              <span>● Tactical OSINT Intelligence Platform</span>
+              <span className="text-white/20">|</span>
+              <span className="text-amber-400">Clearance Level 4+</span>
+            </div>
+          </motion.div>
+
+          {/* Clearance Status Pill */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-amber/40 bg-amber/10 text-amber font-mono text-xs tracking-wider mb-6 shadow-[0_0_20px_rgba(255,176,32,0.15)]"
+          >
+            <span className="w-2 h-2 rounded-full bg-amber animate-pulse" />
+            <span>New case drop · top 10 share a bounty</span>
+          </motion.div>
+
+          {/* Headline from Mockup */}
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.25 }}
+            className="font-mono font-bold text-4xl sm:text-6xl md:text-7xl tracking-tight leading-[1.05] mb-5 select-none"
+          >
+            Dynamic OSINT<br />
+            <em className="italic text-cyan-400 [text-shadow:0_0_36px_rgba(34,224,255,0.65)] not-italic font-normal">
+              i
+            </em>nvestigations
+          </motion.h1>
+
+          {/* Subtitle */}
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className="max-w-xl mx-auto text-muted text-base sm:text-lg font-normal leading-relaxed mb-8 px-2"
+          >
+            Solve live cases with open-source evidence only. Every case reshuffles its clues, so no write-up gives you the answer.
+          </motion.p>
+
+          {/* Hero Action Buttons */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.35 }}
+            className="flex flex-wrap items-center justify-center gap-4"
+          >
+            <Link
+              href="/cases"
+              className="inline-flex items-center gap-3 font-mono font-bold text-sm sm:text-base text-[#0a0c11] bg-cyan-400 hover:bg-cyan-300 px-8 py-3.5 sm:py-4 rounded-full transition-all duration-300 shadow-[0_0_30px_rgba(34,224,255,0.45)] hover:shadow-[0_0_45px_rgba(34,224,255,0.7)] cursor-pointer group"
+            >
+              <span>Initialize Briefing</span>
+              <span className="inline-block w-2 h-4 bg-[#0a0c11] animate-cursor-blink" />
+            </Link>
+
+            <Link
+              href="#cases"
+              className="inline-flex items-center gap-2 font-mono text-xs sm:text-sm font-semibold text-text border border-cyan-400/30 hover:border-cyan-400 bg-white/5 hover:bg-white/10 px-6 py-3.5 sm:py-4 rounded-full transition-all backdrop-blur-md"
+            >
+              <span>View Active Dossiers</span>
+              <ChevronRight className="w-4 h-4 text-cyan-400" />
+            </Link>
+          </motion.div>
+
+          {/* ========================================================= */}
+          {/* INTERACTIVE CONSOLE PREVIEW MOCKUP                         */}
+          {/* ========================================================= */}
+          <motion.div
+            initial={{ opacity: 0, y: 35 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 0.45 }}
+            className="mt-14 sm:mt-16 w-full max-w-4xl bg-[#0a0c11]/90 border border-cyan-400/20 rounded-2xl shadow-[0_25px_80px_rgba(34,224,255,0.1),0_10px_35px_rgba(0,0,0,0.9)] backdrop-blur-2xl overflow-hidden text-left"
+            aria-label="Case workspace preview"
+          >
+            {/* Console Header Bar */}
+            <div className="flex items-center gap-2.5 px-4 sm:px-5 py-3 border-b border-cyan-400/20 bg-black/60 font-mono text-xs text-muted">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#2a3040] inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#2a3040] inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#2a3040] inline-block" />
+              <span className="ml-2 text-text/80 font-medium">case_01 / flight-path-telemetry</span>
+              <span className="ml-auto text-amber flex items-center gap-1.5 font-bold">
+                <span className="w-2 h-2 rounded-full bg-amber animate-ping inline-block" />
+                <span>● live</span>
+              </span>
+            </div>
+
+            {/* Console 3-Column Tactical Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-[210px_1fr_230px] min-h-[300px]">
+              
+              {/* Column 1: Evidence Selector */}
+              <div className="p-4 border-b md:border-b-0 md:border-r border-cyan-400/20 bg-black/40">
+                <h4 className="font-mono text-xs uppercase tracking-wider text-muted mb-3 font-semibold">
+                  Evidence
+                </h4>
+                <div className="space-y-1.5 font-mono text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEvidence("adsb")}
+                    className={`w-full text-left px-3 py-2 rounded-lg border transition-all ${
+                      selectedEvidence === "adsb"
+                        ? "border-cyan-400 text-cyan-300 bg-cyan-400/10 shadow-[0_0_15px_rgba(34,224,255,0.2)] font-medium"
+                        : "border-transparent text-muted hover:text-text hover:bg-white/5"
+                    }`}
+                  >
+                    ads-b_log.csv
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEvidence("audio")}
+                    className={`w-full text-left px-3 py-2 rounded-lg border transition-all ${
+                      selectedEvidence === "audio"
+                        ? "border-cyan-400 text-cyan-300 bg-cyan-400/10 shadow-[0_0_15px_rgba(34,224,255,0.2)] font-medium"
+                        : "border-transparent text-muted hover:text-text hover:bg-white/5"
+                    }`}
+                  >
+                    tower_audio.wav
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEvidence("photo")}
+                    className={`w-full text-left px-3 py-2 rounded-lg border transition-all ${
+                      selectedEvidence === "photo"
+                        ? "border-cyan-400 text-cyan-300 bg-cyan-400/10 shadow-[0_0_15px_rgba(34,224,255,0.2)] font-medium"
+                        : "border-transparent text-muted hover:text-text hover:bg-white/5"
+                    }`}
+                  >
+                    press_photo.jpg
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEvidence("registry")}
+                    className={`w-full text-left px-3 py-2 rounded-lg border transition-all ${
+                      selectedEvidence === "registry"
+                        ? "border-cyan-400 text-cyan-300 bg-cyan-400/10 shadow-[0_0_15px_rgba(34,224,255,0.2)] font-medium"
+                        : "border-transparent text-muted hover:text-text hover:bg-white/5"
+                    }`}
+                  >
+                    registry_scan.pdf
+                  </button>
+                </div>
+              </div>
+
+              {/* Column 2: Tactical Radar Route Visualization */}
+              <div className="p-0 border-b md:border-b-0 md:border-r border-cyan-400/20 relative overflow-hidden flex items-center justify-center bg-[#07090c]">
+                <svg
+                  viewBox="0 0 420 300"
+                  preserveAspectRatio="xMidYMid slice"
+                  className="w-full h-full block"
+                  aria-label="Map with flight route"
+                >
+                  <defs>
+                    <pattern id="tacticalGrid" width="24" height="24" patternUnits="userSpaceOnUse">
+                      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#22e0ff" strokeOpacity="0.08" strokeWidth="1" />
+                    </pattern>
+                    <radialGradient id="radarBackdrop" cx="30%" cy="65%">
+                      <stop offset="0%" stopColor="#16303a" />
+                      <stop offset="100%" stopColor="#0a0c11" />
+                    </radialGradient>
+                  </defs>
+
+                  <rect width="420" height="300" fill="url(#radarBackdrop)" />
+                  <rect width="420" height="300" fill="url(#tacticalGrid)" />
+
+                  {/* Concentric radar range rings */}
+                  <circle cx="210" cy="150" r="60" fill="none" stroke="#22e0ff" strokeOpacity="0.12" strokeDasharray="3 3" />
+                  <circle cx="210" cy="150" r="110" fill="none" stroke="#22e0ff" strokeOpacity="0.08" />
+
+                  {/* Flight Vector Curve */}
+                  <path
+                    d="M 30 230 Q 150 70 250 130 T 390 60"
+                    fill="none"
+                    stroke="#22e0ff"
+                    strokeWidth="1.8"
+                    strokeDasharray="6 5"
+                  />
+
+                  {/* Ping Nodes */}
+                  <circle cx="30" cy="230" r="5" fill="#22e0ff" />
+                  <circle cx="250" cy="130" r="3.5" fill="#8a93a6" />
+                  
+                  {/* Destination / Last Ping Contact */}
+                  <circle cx="390" cy="60" r="6" fill="#ffb020" />
+                  <circle cx="390" cy="60" r="15" fill="none" stroke="#ffb020" strokeOpacity="0.5" strokeWidth="1.5">
+                    <animate attributeName="r" values="7;20;7" dur="2.4s" repeatCount="indefinite" />
+                    <animate attributeName="stroke-opacity" values="0.8;0;0.8" dur="2.4s" repeatCount="indefinite" />
+                  </circle>
+
+                  {/* Telemetry Labels */}
+                  <text x="40" y="256" fill="#8a93a6" fontFamily="var(--font-mono), monospace" fontSize="11">
+                    ICAO 4CA7B2 · FL370
+                  </text>
+                  <text x="290" y="40" fill="#ffb020" fontFamily="var(--font-mono), monospace" fontSize="11" fontWeight="bold">
+                    last ping 03:42Z
+                  </text>
+                </svg>
+
+                {/* Contextual Telemetry Overlay */}
+                <div className="absolute bottom-3 left-4 text-[10px] font-mono text-cyan-300/80 bg-black/70 px-2.5 py-1 rounded border border-cyan-400/20 backdrop-blur-md">
+                  {selectedEvidence === "adsb" && "ACTIVE STREAM: 1090MHz Mode S Squawk 7700"}
+                  {selectedEvidence === "audio" && "AUDIO SPECTROGRAM: VHF 124.850 MHz Tower Feed"}
+                  {selectedEvidence === "photo" && "EXIF METADATA: 4K Sensor Lat/Lon Pinpoint"}
+                  {selectedEvidence === "registry" && "ICAO REGISTRY: Airframe Tail N409SX Verified"}
+                </div>
+              </div>
+
+              {/* Column 3: Analyst Notes */}
+              <div className="p-4 bg-black/40 font-mono text-xs">
+                <h4 className="font-mono text-xs uppercase tracking-wider text-muted mb-3 font-semibold">
+                  Analyst notes
+                </h4>
+
+                <div className="border-l-2 border-amber pl-3 py-1 mb-4 text-muted">
+                  <b className="text-text font-semibold block mb-0.5">Transponder off at 03:42Z</b>
+                  Signal drops 40 km from the coast line.
+                </div>
+
+                <div className="border-l-2 border-cyan-400 pl-3 py-1 mb-4 text-muted">
+                  <b className="text-text font-semibold block mb-0.5">Registry mismatch</b>
+                  Owner shell company lists two addresses in Panama.
+                </div>
+
+                <div className="border-l-2 border-amber pl-3 py-1 text-muted">
+                  <b className="text-amber font-semibold block mb-0.5">Cryptographic Keyring</b>
+                  Payload hash matches Section 4 breach logs.
+                </div>
+              </div>
+
+            </div>
+          </motion.div>
+        </header>
+
+        {/* ========================================================= */}
+        {/* SECTION 1: PICK A CASE                                    */}
+        {/* ========================================================= */}
+        <section id="cases" className="pt-20 sm:pt-28">
+          <h2 className="font-mono font-bold text-3xl sm:text-5xl md:text-6xl text-center tracking-tight mb-3">
+            Pick a case
+          </h2>
+          <p className="text-center text-muted max-w-lg mx-auto mb-12 sm:mb-16 text-base sm:text-lg">
+            Three live investigations, from a first-week warm-up to a full alias hunt.
           </p>
 
-          <Link 
-            href="/cases"
-            ref={ctaButtonRef}
-            className="opacity-0 mt-10 group flex items-center gap-4 border border-accent/40 hover:border-accent bg-surface/50 hover:bg-surface/80 px-8 py-4 rounded-full transition-all duration-300 backdrop-blur-md shadow-lg shadow-accent/10"
-          >
-            <span className="uppercase tracking-widest text-xs font-mono font-bold text-text group-hover:text-accent transition-colors">
-              Begin Active Investigation
-            </span>
-            <ArrowRight className="w-4 h-4 text-accent group-hover:translate-x-1 transition-transform" />
-          </Link>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Case 1: Flight Path Telemetry */}
+            <article className="group bg-[#0f1117]/60 border border-cyan-400/20 rounded-xl overflow-hidden flex flex-col backdrop-blur-xl hover:border-cyan-400 hover:shadow-[0_0_35px_rgba(34,224,255,0.2)] transition-all duration-300">
+              <div className="h-44 bg-[#0a0c11] border-b border-cyan-400/20 relative overflow-hidden">
+                <svg viewBox="0 0 360 180" preserveAspectRatio="xMidYMid slice" className="w-full h-full block">
+                  <rect width="360" height="180" fill="#0a0c11" />
+                  <path
+                    d="M 20 140 c 40 -20 60 10 100 -6 s 50 -40 90 -30 30 40 70 20 40 -40 60 -30"
+                    fill="none"
+                    stroke="#2a4a55"
+                    strokeWidth="10"
+                    strokeOpacity="0.4"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M 30 150 Q 130 40 210 80 T 330 40"
+                    fill="none"
+                    stroke="#22e0ff"
+                    strokeWidth="1.6"
+                    strokeDasharray="5 5"
+                  />
+                  <circle cx="30" cy="150" r="4" fill="#22e0ff" />
+                  <circle cx="330" cy="40" r="5" fill="#ffb020" />
+                </svg>
+              </div>
 
-          {/* Scroll Hint */}
-          <div 
-            ref={scrollIndicatorRef}
-            className="absolute bottom-10 flex flex-col items-center gap-2 opacity-0 text-text/40 font-mono text-[10px] uppercase tracking-widest pointer-events-none"
-          >
-            <span>Scroll to decrypt classified dossier</span>
-            <ChevronDown className="w-4 h-4 text-accent animate-bounce" />
-          </div>
-        </div>
-
-        {/* ========================================================= */}
-        {/* 2. THE PROCEDURAL DOSSIER CARD (Scroll-Bound 3D Entrance) */}
-        {/* ========================================================= */}
-        <div 
-          ref={dossierCardRef} 
-          className="absolute z-30 w-[92%] sm:w-[88%] max-w-4xl mx-auto rounded-2xl border border-emerald-500/40 bg-[#0d110f]/95 backdrop-blur-2xl shadow-[0_0_80px_rgba(16,185,129,0.14),0_20px_50px_rgba(0,0,0,0.85)] overflow-hidden pointer-events-auto transition-shadow"
-          style={{ willChange: "transform, opacity" }}
-        >
-          {/* Card Top Glowing Border Strip */}
-          <div className="h-1 w-full bg-gradient-to-r from-emerald-500/20 via-accent to-emerald-500/20" />
-
-          {/* Dossier Card Header Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-black/60 border-b border-emerald-950/60 font-mono text-xs">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <span className="text-emerald-400 font-bold uppercase tracking-wider text-[11px]">
-                TOP SECRET // SPECIAL ACCESS REQUIRED
-              </span>
-              <span className="text-text/30 hidden sm:inline">•</span>
-              <span className="text-text/50 text-[10px] hidden sm:inline">REF: SHADOW-7702-PT</span>
-            </div>
-
-            <div className="flex items-center gap-2 text-[10px] text-text/60">
-              <Shield className="w-3.5 h-3.5 text-accent" />
-              <span>CLASSIFICATION: LEVEL 4+</span>
-            </div>
-          </div>
-
-          {/* Dossier Card Content Layout */}
-          <div className="p-6 md:p-8 space-y-6">
-            {/* Title & Case Meta */}
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 border-b border-border/40 pb-5">
-              <div>
-                <div className="flex items-center gap-2 text-accent font-mono text-xs uppercase tracking-widest mb-1.5 font-bold">
-                  <Fingerprint className="w-4 h-4 text-accent" />
-                  <span>Flagship Incident File #01</span>
+              <div className="p-6 flex flex-col flex-1 gap-2.5">
+                <div className="flex items-center justify-between font-mono text-xs text-muted">
+                  <span className="font-semibold text-text/80">Case 1</span>
+                  <span className="text-cyan-300 font-bold px-2 py-0.5 rounded bg-cyan-400/10 border border-cyan-400/20">
+                    Easy
+                  </span>
                 </div>
-                <h2 className="font-display text-2xl sm:text-4xl text-white tracking-tight">
-                  The Phantom Protocol
-                </h2>
-                <p className="text-text/60 text-xs sm:text-sm font-light mt-1 max-w-xl">
-                  Primary defense layer of Section 4 breached. An offshore adversary extracted cryptographic keyrings and is mobilizing for physical delivery.
+                <h3 className="font-mono text-xl font-bold tracking-tight text-white group-hover:text-cyan-300 transition-colors">
+                  Flight Path Telemetry
+                </h3>
+                <p className="text-muted text-sm leading-relaxed">
+                  A private jet went dark over open water. Rebuild its route from public pings and name where it landed.
                 </p>
+                <Link
+                  href="/investigation/phantom-protocol"
+                  className="mt-auto pt-4 inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-cyan-300 hover:underline"
+                >
+                  <span>Open case file</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </article>
+
+            {/* Case 2: Metadata Leak */}
+            <article className="group bg-[#0f1117]/60 border border-amber/25 rounded-xl overflow-hidden flex flex-col backdrop-blur-xl hover:border-amber hover:shadow-[0_0_35px_rgba(255,176,32,0.2)] transition-all duration-300">
+              <div className="h-44 bg-[#0a0c11] border-b border-amber/20 p-4 font-mono text-[11px] leading-relaxed text-muted select-none overflow-hidden">
+                <div><span className="text-[#5b6478]">0000A0</span>  45 78 69 66 00 00  <span className="text-[#5b6478]">Exif..</span></div>
+                <div><span className="text-[#5b6478]">0000B0</span>  4D 4D 00 2A 00 00  <span className="text-[#5b6478]">MM.*..</span></div>
+                <div><span className="text-[#5b6478]">0000C0</span>  <span className="text-amber bg-amber/15 px-1 py-0.5 rounded font-bold">47 50 53 4C 61 74</span>  <span className="text-amber">GPSLat</span></div>
+                <div><span className="text-[#5b6478]">0000D0</span>  <span className="text-amber bg-amber/15 px-1 py-0.5 rounded font-bold">32 33 2E 32 36 31</span>  <span className="text-amber">23.261</span></div>
+                <div><span className="text-[#5b6478]">0000E0</span>  41 75 74 68 6F 72  <span className="text-cyan-300 font-semibold">Author</span></div>
+                <div><span className="text-[#5b6478]">0000F0</span>  6D 2E 72 61 6F 40  <span className="text-cyan-300 font-semibold">m.rao@</span></div>
               </div>
 
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-950/30 text-red-400 font-mono text-xs uppercase tracking-wider shrink-0">
-                <ShieldAlert className="w-4 h-4" />
-                <span>THREAT LEVEL: CRITICAL</span>
-              </div>
-            </div>
-
-            {/* Classified OSINT Intelligence Matrix */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono">
-              {/* Target IP */}
-              <div className="p-4 rounded-xl border border-emerald-950/80 bg-black/40 hover:border-emerald-500/40 transition-colors">
-                <div className="flex items-center justify-between text-text/40 text-[10px] uppercase tracking-wider mb-2">
-                  <span className="flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-emerald-400" />
-                    Target IP
+              <div className="p-6 flex flex-col flex-1 gap-2.5">
+                <div className="flex items-center justify-between font-mono text-xs text-muted">
+                  <span className="font-semibold text-text/80">Case 2</span>
+                  <span className="text-amber font-bold px-2 py-0.5 rounded bg-amber/10 border border-amber/20">
+                    Medium
                   </span>
-                  <span className="text-emerald-400 font-bold">OFFSHORE C2</span>
                 </div>
-                <div className="text-lg font-bold text-emerald-300 font-mono tracking-wider">
-                  10.5.22.1
-                </div>
-                <div className="text-[11px] text-text/60 mt-1">
-                  Panama Relay • DarkNet Transit Group (AS9498)
-                </div>
+                <h3 className="font-mono text-xl font-bold tracking-tight text-white group-hover:text-amber transition-colors">
+                  Metadata Leak
+                </h3>
+                <p className="text-muted text-sm leading-relaxed">
+                  A &quot;scrubbed&quot; press photo still carries hidden fields. Inspect the hex, then trace the author and location.
+                </p>
+                <Link
+                  href="/investigation/operation-midnight"
+                  className="mt-auto pt-4 inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-amber hover:underline"
+                >
+                  <span>Open case file</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </article>
+
+            {/* Case 3: Alias Footprint */}
+            <article className="group bg-[#0f1117]/60 border border-cyan-400/20 rounded-xl overflow-hidden flex flex-col backdrop-blur-xl hover:border-cyan-400 hover:shadow-[0_0_35px_rgba(34,224,255,0.2)] transition-all duration-300">
+              <div className="h-44 bg-[#0a0c11] border-b border-cyan-400/20 relative overflow-hidden flex items-center justify-center">
+                <svg viewBox="0 0 360 180" preserveAspectRatio="xMidYMid slice" className="w-full h-full block">
+                  <rect width="360" height="180" fill="#0a0c11" />
+                  <g stroke="#22e0ff" strokeOpacity="0.4" strokeWidth="1.2">
+                    <line x1="180" y1="90" x2="80" y2="45" />
+                    <line x1="180" y1="90" x2="270" y2="40" />
+                    <line x1="180" y1="90" x2="90" y2="145" />
+                    <line x1="80" y1="45" x2="40" y2="105" />
+                    <line x1="270" y1="40" x2="325" y2="85" />
+                  </g>
+                  <line x1="180" y1="90" x2="285" y2="135" stroke="#ffb020" strokeWidth="1.6" strokeDasharray="4 4" />
+                  
+                  <g fill="#0f1117" stroke="#22e0ff" strokeWidth="1.5">
+                    <circle cx="80" cy="45" r="9" />
+                    <circle cx="270" cy="40" r="9" />
+                    <circle cx="90" cy="145" r="9" />
+                    <circle cx="40" cy="105" r="6" />
+                    <circle cx="325" cy="85" r="6" />
+                  </g>
+
+                  {/* Target Node */}
+                  <circle cx="285" cy="135" r="10" fill="#0f1117" stroke="#ffb020" strokeWidth="2" />
+                  <circle cx="180" cy="90" r="16" fill="#22e0ff" fillOpacity="0.15" stroke="#22e0ff" strokeWidth="2" />
+                  <text x="164" y="94" fill="#e6eaf2" fontFamily="var(--font-mono), monospace" fontSize="9" fontWeight="bold">
+                    @n0va
+                  </text>
+                </svg>
               </div>
 
-              {/* Threat Syndicate */}
-              <div className="p-4 rounded-xl border border-emerald-950/80 bg-black/40 hover:border-accent/40 transition-colors">
-                <div className="flex items-center justify-between text-text/40 text-[10px] uppercase tracking-wider mb-2">
-                  <span className="flex items-center gap-1.5">
-                    <Terminal className="w-3.5 h-3.5 text-accent" />
-                    Syndicate
+              <div className="p-6 flex flex-col flex-1 gap-2.5">
+                <div className="flex items-center justify-between font-mono text-xs text-muted">
+                  <span className="font-semibold text-text/80">Case 3</span>
+                  <span className="text-red-400 font-bold px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20">
+                    Hard
                   </span>
-                  <span className="text-accent font-bold">ATTRIBUTED</span>
                 </div>
-                <div className="text-lg font-bold text-white font-mono tracking-wider">
-                  The Silent Hand
-                </div>
-                <div className="text-[11px] text-text/60 mt-1">
-                  Transnational Cyber-Espionage Collective
-                </div>
-              </div>
-
-              {/* Physical Extraction */}
-              <div className="p-4 rounded-xl border border-emerald-950/80 bg-black/40 hover:border-emerald-500/40 transition-colors">
-                <div className="flex items-center justify-between text-text/40 text-[10px] uppercase tracking-wider mb-2">
-                  <span className="flex items-center gap-1.5">
-                    <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                    Rendezvous
-                  </span>
-                  <span className="text-amber-400 font-bold">22:00 UTC</span>
-                </div>
-                <div className="text-lg font-bold text-emerald-300 font-mono tracking-wider">
-                  Pier 42 Warehouse
-                </div>
-                <div className="text-[11px] text-text/60 mt-1">
-                  37°48&apos;14.2&quot;N 122°16&apos;44.8&quot;W
-                </div>
-              </div>
-            </div>
-
-            {/* Live Telemetry Decrypt Snippet */}
-            <div className="p-4 rounded-xl border border-border/50 bg-[#080b09] font-mono text-xs space-y-1.5 overflow-hidden">
-              <div className="flex items-center justify-between text-[10px] text-text/40 uppercase tracking-widest pb-1 border-b border-border/30">
-                <span className="flex items-center gap-1.5">
-                  <Cpu className="w-3.5 h-3.5 text-accent" />
-                  RAW AUDIT LOG TRACE // PACKET DECOMPRESSION
-                </span>
-                <span className="text-emerald-400">INTEGRITY VERIFIED</span>
-              </div>
-              <p className="text-text/70 break-all leading-relaxed pt-1">
-                <span className="text-text/40">13:55:36</span> <span className="text-amber-400">192.168.1.104</span> - GET /admin/secure/phantom <span className="text-red-400">401 UNAUTHORIZED</span>
-              </p>
-              <p className="text-text/70 break-all leading-relaxed">
-                <span className="text-text/40">14:02:11</span> <span className="text-accent font-bold">10.5.22.1</span> - POST /api/v1/auth (Token: Operative-9) <span className="text-emerald-400">200 OK</span>
-              </p>
-              <p className="text-emerald-400/90 break-all leading-relaxed font-semibold">
-                &gt; INTERCEPT: &quot;Package secured. Meet at extraction point Pier 42 at 22:00. Bring crypto drive.&quot;
-              </p>
-            </div>
-
-            {/* Dossier Action Footer */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-              <div className="flex items-center gap-2 text-xs font-mono text-text/60">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>3 Key Vectors Correlated • Ready for Deep Investigation</span>
-              </div>
-
-              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <h3 className="font-mono text-xl font-bold tracking-tight text-white group-hover:text-cyan-300 transition-colors">
+                  Alias Footprint
+                </h3>
+                <p className="text-muted text-sm leading-relaxed">
+                  One handle, five platforms, no real name. Link the accounts and find the person behind them.
+                </p>
                 <Link
                   href="/cases"
-                  className="w-full sm:w-auto px-6 py-3 rounded-full bg-accent text-background font-mono font-bold text-xs uppercase tracking-wider hover:bg-accent/80 transition-all flex items-center justify-center gap-2 shadow-lg shadow-accent/20"
+                  className="mt-auto pt-4 inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-cyan-300 hover:underline"
                 >
-                  <span>Launch Investigation Console</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <span>Open case file</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </article>
+
+          </div>
+        </section>
+
+        {/* ========================================================= */}
+        {/* SECTION 2: LEARN THE TRADECRAFT                           */}
+        {/* ========================================================= */}
+        <section id="learn" className="pt-24 sm:pt-32">
+          <h2 className="font-mono font-bold text-3xl sm:text-5xl md:text-6xl text-center tracking-tight mb-3">
+            Learn the tradecraft
+          </h2>
+          <p className="text-center text-muted max-w-lg mx-auto mb-12 sm:mb-16 text-base sm:text-lg">
+            Every case teaches a technique you can use on real, authorised work.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <div className="bg-[#0f1117]/60 border border-cyan-400/20 rounded-xl p-7 sm:p-8 backdrop-blur-xl hover:border-cyan-400/60 transition-colors">
+              <span className="font-mono text-xs font-bold text-cyan-300 tracking-wider uppercase mb-5 block">
+                geoint
+              </span>
+              <h3 className="font-mono text-xl sm:text-2xl font-bold tracking-tight mb-2 text-white">
+                Geolocate anything
+              </h3>
+              <p className="text-muted text-sm sm:text-base leading-relaxed">
+                Match shadows, signage and terrain to a map pin, then defend your answer with solar azimuth vectors.
+              </p>
+            </div>
+
+            <div className="bg-[#0f1117]/60 border border-cyan-400/20 rounded-xl p-7 sm:p-8 backdrop-blur-xl hover:border-cyan-400/60 transition-colors">
+              <span className="font-mono text-xs font-bold text-cyan-300 tracking-wider uppercase mb-5 block">
+                forensics
+              </span>
+              <h3 className="font-mono text-xl sm:text-2xl font-bold tracking-tight mb-2 text-white">
+                Read the hidden data
+              </h3>
+              <p className="text-muted text-sm sm:text-base leading-relaxed">
+                Pull metadata, hashes and file headers out of images and documents without leaving forensic traces.
+              </p>
+            </div>
+
+            <div className="bg-[#0f1117]/60 border border-cyan-400/20 rounded-xl p-7 sm:p-8 backdrop-blur-xl hover:border-cyan-400/60 transition-colors">
+              <span className="font-mono text-xs font-bold text-cyan-300 tracking-wider uppercase mb-5 block">
+                sigint-lite
+              </span>
+              <h3 className="font-mono text-xl sm:text-2xl font-bold tracking-tight mb-2 text-white">
+                Follow public signals
+              </h3>
+              <p className="text-muted text-sm sm:text-base leading-relaxed">
+                Work with flight logs, vessel trackers, satellite telemetry downlinks, and open radio feeds.
+              </p>
+            </div>
+
+            <div className="bg-[#0f1117]/60 border border-cyan-400/20 rounded-xl p-7 sm:p-8 backdrop-blur-xl hover:border-cyan-400/60 transition-colors">
+              <span className="font-mono text-xs font-bold text-cyan-300 tracking-wider uppercase mb-5 block">
+                humint-lite
+              </span>
+              <h3 className="font-mono text-xl sm:text-2xl font-bold tracking-tight mb-2 text-white">
+                Map an online identity
+              </h3>
+              <p className="text-muted text-sm sm:text-base leading-relaxed">
+                Connect handles, avatars, PGP fingerprints, and writing habits across dispersed darknet platforms.
+              </p>
+            </div>
+
+          </div>
+        </section>
+
+        {/* ========================================================= */}
+        {/* SECTION 3: SAFE BY DESIGN                                 */}
+        {/* ========================================================= */}
+        <section id="safety" className="pt-24 sm:pt-32">
+          <h2 className="font-mono font-bold text-3xl sm:text-5xl md:text-6xl text-center tracking-tight mb-3">
+            Safe by design
+          </h2>
+          <p className="text-center text-muted max-w-lg mx-auto mb-12 sm:mb-16 text-base sm:text-lg">
+            Practice on staged data. Nothing you do touches a real person or active production systems.
+          </p>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+            <div className="bg-[#0f1117]/60 border border-cyan-400/20 rounded-xl p-6 backdrop-blur-xl">
+              <b className="font-mono font-bold text-3xl sm:text-4xl text-cyan-300 block tracking-tight mb-1">
+                100%
+              </b>
+              <span className="text-muted text-xs sm:text-sm font-normal">
+                fictional subjects and staged evidence
+              </span>
+            </div>
+
+            <div className="bg-[#0f1117]/60 border border-cyan-400/20 rounded-xl p-6 backdrop-blur-xl">
+              <b className="font-mono font-bold text-3xl sm:text-4xl text-text block tracking-tight mb-1">
+                0
+              </b>
+              <span className="text-muted text-xs sm:text-sm font-normal">
+                live systems touched, passive collection only
+              </span>
+            </div>
+
+            <div className="bg-[#0f1117]/60 border border-cyan-400/20 rounded-xl p-6 backdrop-blur-xl">
+              <b className="font-mono font-bold text-3xl sm:text-4xl text-amber block tracking-tight mb-1">
+                24/7
+              </b>
+              <span className="text-muted text-xs sm:text-sm font-normal">
+                tactical hints and mentor guidance
+              </span>
+            </div>
+
+            <div className="bg-[#0f1117]/60 border border-cyan-400/20 rounded-xl p-6 backdrop-blur-xl">
+              <b className="font-mono font-bold text-3xl sm:text-4xl text-cyan-400 block tracking-tight mb-1">
+                1 / run
+              </b>
+              <span className="text-muted text-xs sm:text-sm font-normal">
+                clues reshuffle on every fresh investigation
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================= */}
+        {/* INTERACTIVE OSINT PRACTICE SANDBOX                        */}
+        {/* ========================================================= */}
+        <section id="practice" className="pt-20 sm:pt-28">
+          <OSINTPracticeSandbox />
+        </section>
+
+        {/* ========================================================= */}
+        {/* FOOTER                                                    */}
+        {/* ========================================================= */}
+        <footer className="mt-24 sm:mt-32 pt-12 border-t border-cyan-400/20 font-mono text-xs text-muted">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-12">
+            <div>
+              <h5 className="font-bold text-text uppercase tracking-wider mb-3">Cases</h5>
+              <div className="space-y-2">
+                <Link href="/investigation/phantom-protocol" className="block hover:text-cyan-300 transition-colors">
+                  Flight Path Telemetry
+                </Link>
+                <Link href="/investigation/operation-midnight" className="block hover:text-cyan-300 transition-colors">
+                  Metadata Leak
+                </Link>
+                <Link href="/cases" className="block hover:text-cyan-300 transition-colors">
+                  Alias Footprint
                 </Link>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Supplementary Continuation Section */}
-      <section className="relative z-10 py-24 px-6 max-w-5xl mx-auto border-t border-border/30">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
-          <div className="p-6 rounded-2xl border border-border/40 bg-surface/20">
-            <div className="w-10 h-10 rounded-full bg-accent/10 border border-accent/30 flex items-center justify-center text-accent mb-4 mx-auto md:mx-0">
-              <Terminal className="w-5 h-5" />
+            <div>
+              <h5 className="font-bold text-text uppercase tracking-wider mb-3">Learn</h5>
+              <div className="space-y-2">
+                <Link href="#learn" className="block hover:text-cyan-300 transition-colors">
+                  Geolocation
+                </Link>
+                <Link href="#learn" className="block hover:text-cyan-300 transition-colors">
+                  File forensics
+                </Link>
+                <Link href="#learn" className="block hover:text-cyan-300 transition-colors">
+                  Identity mapping
+                </Link>
+              </div>
             </div>
-            <h3 className="font-display text-xl mb-2 text-white">Authentic OSINT</h3>
-            <p className="text-text/60 text-xs sm:text-sm font-light leading-relaxed">
-              Trace IP addresses, port vulnerabilities, and rogue domain infrastructures using our realistic tactical command terminal.
-            </p>
-          </div>
 
-          <div className="p-6 rounded-2xl border border-border/40 bg-surface/20">
-            <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-4 mx-auto md:mx-0">
-              <Lock className="w-5 h-5" />
+            <div>
+              <h5 className="font-bold text-text uppercase tracking-wider mb-3">Platform</h5>
+              <div className="space-y-2">
+                <Link href="#safety" className="block hover:text-cyan-300 transition-colors">
+                  Safety Protocol
+                </Link>
+                <Link href="/cases" className="block hover:text-cyan-300 transition-colors">
+                  Operative Console
+                </Link>
+                <Link href="/report" className="block hover:text-cyan-300 transition-colors">
+                  Dossier Reports
+                </Link>
+              </div>
             </div>
-            <h3 className="font-display text-xl mb-2 text-white">Clearance Progression</h3>
-            <p className="text-text/60 text-xs sm:text-sm font-light leading-relaxed">
-              Solve classified cases to raise your clearance level, unlock advanced satellite reconnaissance missions, and claim senior operative dossiers.
-            </p>
-          </div>
 
-          <div className="p-6 rounded-2xl border border-border/40 bg-surface/20">
-            <div className="w-10 h-10 rounded-full bg-accent/10 border border-accent/30 flex items-center justify-center text-accent mb-4 mx-auto md:mx-0">
-              <Activity className="w-5 h-5" />
+            <div>
+              <h5 className="font-bold text-text uppercase tracking-wider mb-3">About</h5>
+              <div className="space-y-2">
+                <Link href="/cases" className="block hover:text-cyan-300 transition-colors">
+                  Investigation Hub
+                </Link>
+                <span className="block text-text/40">Clearance L4-L6</span>
+                <span className="block text-text/40">Encrypted AES-256</span>
+              </div>
             </div>
-            <h3 className="font-display text-xl mb-2 text-white">AI Deductions</h3>
-            <p className="text-text/60 text-xs sm:text-sm font-light leading-relaxed">
-              Interrogate ShadowTrace AI without fear of spoilers. Formulate tactical hypotheses and verify timeline correlations in real time.
-            </p>
           </div>
-        </div>
 
-        <div className="mt-16 text-center">
-          <Link
-            href="/cases"
-            className="inline-flex items-center gap-3 px-8 py-4 rounded-full border border-accent/50 bg-accent/10 text-accent hover:bg-accent hover:text-background font-mono font-bold text-xs uppercase tracking-wider transition-all shadow-md"
-          >
-            <span>Proceed to Active Investigations</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-      </section>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-cyan-400/10 text-muted/70">
+            <span>© 2026 ShadowTrace. Training and simulation use only.</span>
+            <span>Passive OSINT · Staged Telemetry · Privacy Ensured</span>
+          </div>
+        </footer>
+
+      </div>
     </div>
   );
 }
