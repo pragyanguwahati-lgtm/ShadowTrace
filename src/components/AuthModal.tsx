@@ -114,15 +114,19 @@ export default function AuthModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <div
+        onClick={onClose}
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md cursor-pointer"
+      >
         
         {/* Modal Window */}
         <motion.div
+          onClick={(e) => e.stopPropagation()}
           initial={{ opacity: 0, scale: 0.94, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 15 }}
           transition={{ duration: 0.2 }}
-          className="relative w-full max-w-md bg-[#0a0c11] border border-cyan-400/30 rounded-2xl shadow-[0_25px_80px_rgba(34,224,255,0.18),0_10px_40px_rgba(0,0,0,0.9)] overflow-hidden text-left font-mono"
+          className="relative w-full max-w-md bg-[#0a0c11] border border-cyan-400/30 rounded-2xl shadow-[0_25px_80px_rgba(34,224,255,0.18),0_10px_40px_rgba(0,0,0,0.9)] overflow-hidden text-left font-mono cursor-default"
         >
           {/* Top Bar */}
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-cyan-400/20 bg-black/60 text-xs">

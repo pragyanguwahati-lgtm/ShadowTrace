@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Terminal, FileText, Compass, Shield, ArrowRight, X, Radio } from "lucide-react";
+import { Search, Terminal, FileText, Compass, Shield, ArrowRight, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface SearchItem {
@@ -39,17 +39,18 @@ export default function TacticalCommandPalette({
   const isControlled = typeof controlledIsOpen === "boolean";
   const isOpen = isControlled ? controlledIsOpen : internalIsOpen;
 
+  const [query, setQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const handleClose = () => {
+    setQuery("");
     if (controlledOnClose) {
       controlledOnClose();
     }
     setInternalIsOpen(false);
   };
-
-  const [query, setQuery] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Global CMD+K / CTRL+K listener
   useEffect(() => {
@@ -72,10 +73,11 @@ export default function TacticalCommandPalette({
 
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-      setSelectedIndex(0);
-    } else {
-      setQuery("");
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+        setSelectedIndex(0);
+      }, 50);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
@@ -125,13 +127,17 @@ export default function TacticalCommandPalette({
 
       <AnimatePresence>
         {isOpen && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/80 backdrop-blur-md">
+          <div
+            onClick={handleClose}
+            className="fixed inset-0 z-[100] flex items-start justify-center pt-20 px-4 bg-black/80 backdrop-blur-md cursor-pointer"
+          >
             <motion.div
+              onClick={(e) => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.95, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
               transition={{ duration: 0.18 }}
-              className="w-full max-w-xl bg-[#0a0c11] border border-cyan-400/30 rounded-2xl shadow-[0_25px_80px_rgba(0,0,0,0.9),0_0_30px_rgba(34,224,255,0.15)] overflow-hidden font-mono"
+              className="w-full max-w-xl bg-[#0a0c11] border border-cyan-400/30 rounded-2xl shadow-[0_25px_80px_rgba(0,0,0,0.9),0_0_30px_rgba(34,224,255,0.15)] overflow-hidden font-mono cursor-default"
             >
               {/* Search Bar Input */}
               <div className="flex items-center gap-3 px-4 py-3.5 border-b border-cyan-400/20 bg-black/60">

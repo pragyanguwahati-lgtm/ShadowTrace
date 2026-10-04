@@ -46,6 +46,13 @@ export default function Navigation() {
     };
   }, []);
 
+  // Automatically close any open modals or palette on route navigation
+  useEffect(() => {
+    setPaletteOpen(false);
+    setAuthOpen(false);
+    setMobileDrawerOpen(false);
+  }, [pathname]);
+
   const handleInitializeClick = (e: React.MouseEvent) => {
     if (!hasAuthenticatedOrGuest()) {
       e.preventDefault();
@@ -55,24 +62,6 @@ export default function Navigation() {
 
   return (
     <>
-      <AuthModal 
-        isOpen={authOpen} 
-        onClose={() => setAuthOpen(false)} 
-        onSuccess={() => {
-          if (pathname === "/") {
-            router.push("/cases");
-          }
-        }}
-        promptTitle="Operative Account Required to Save Progress"
-        promptDescription="Establish an Operative ID to save your deductions, clearance rank, and dossiers before starting. If you prefer, continue in Guest Mode (progress will not be stored)."
-      />
-
-      {/* Feature 3: Tactical Command Palette (Site Search) */}
-      <TacticalCommandPalette
-        isOpen={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-      />
-
       <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-6 py-3.5 text-text backdrop-blur-xl bg-[#090909]/85 border-b border-[#2C2C2C]/50 transition-all duration-300 print:hidden">
         <div className="flex items-center gap-3 sm:gap-4">
           {/* Feature 5: Mobile Menu Drawer */}
@@ -203,6 +192,25 @@ export default function Navigation() {
           </Link>
         </div>
       </header>
+
+      {/* Feature 3: Tactical Command Palette (Site Search) */}
+      <TacticalCommandPalette
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+      />
+
+      {/* Operative Registration / Login Modal */}
+      <AuthModal 
+        isOpen={authOpen} 
+        onClose={() => setAuthOpen(false)} 
+        onSuccess={() => {
+          if (pathname === "/") {
+            router.push("/cases");
+          }
+        }}
+        promptTitle="Operative Account Required to Save Progress"
+        promptDescription="Establish an Operative ID to save your deductions, clearance rank, and dossiers before starting. If you prefer, continue in Guest Mode (progress will not be stored)."
+      />
     </>
   );
 }

@@ -46,7 +46,7 @@ export default function MobileNavDrawer({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={closeDrawer}
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
+              className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm cursor-pointer"
             />
 
             <motion.div
@@ -54,7 +54,7 @@ export default function MobileNavDrawer({
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 bottom-0 z-50 w-72 bg-[#090b10] border-l border-cyan-400/20 p-6 flex flex-col font-mono shadow-2xl"
+              className="fixed top-0 right-0 bottom-0 z-[100] w-72 bg-[#090b10] border-l border-cyan-400/20 p-6 flex flex-col font-mono shadow-2xl"
             >
               {/* Header */}
               <div className="flex items-center justify-between pb-4 border-b border-border/40">

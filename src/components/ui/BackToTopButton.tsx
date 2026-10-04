@@ -31,7 +31,7 @@ export default function BackToTopButton() {
           exit={{ opacity: 0, scale: 0.8, y: 15 }}
           transition={{ duration: 0.2 }}
           aria-label="Scroll back to top"
-          className="fixed bottom-6 right-6 z-40 p-3 rounded-full border border-cyan-400/40 bg-[#0a0c11]/90 text-cyan-300 hover:text-white hover:border-cyan-400 hover:bg-cyan-950/40 shadow-[0_0_20px_rgba(34,224,255,0.25)] transition-all cursor-pointer backdrop-blur-md group"
+          className="fixed bottom-20 right-6 z-40 p-3 rounded-full border border-cyan-400/40 bg-[#0a0c11]/90 text-cyan-300 hover:text-white hover:border-cyan-400 hover:bg-cyan-950/40 shadow-[0_0_20px_rgba(34,224,255,0.25)] transition-all cursor-pointer backdrop-blur-md group"
         >
           <ArrowUp className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" />
         </motion.button>
